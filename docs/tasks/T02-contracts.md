@@ -1,6 +1,6 @@
 # T02 — Shared contracts and pure helpers
 
-Status: IN_PROGRESS
+Status: REVIEW
 Owner: Cline; exclusive T002 -> T02 user dispatch (implementation, commits and task-branch push authorized; no main merge). No DB/port leases needed.
 Depends on: T00
 Requirement IDs: A8, I3, V2, V3, N6
@@ -23,9 +23,9 @@ Own T02 files in `/home/areion/projects/eterna-take-home/docs/execution/dependen
 
 | Deliverable | State | Evidence | Verified revision |
 |---|---|---|---|
-| Complete schemas and DTO contracts | NOT_STARTED | Not executed | None |
-| Exact money and validated server env | NOT_STARTED | Not executed | None |
-| HTTP/error/origin/cookie helpers and tests | NOT_STARTED | Not executed | None |
+| Complete schemas and DTO contracts | VERIFIED | lib/types.ts, lib/validation/schemas.ts; 8 validation tests (strict inputs, snapshots/duplicates, dates, pagination, Unicode credentials); typecheck | 7efc91e91d1dc1fe4f66e5c663e3c84209f9140b |
+| Exact money and validated server env | VERIFIED | lib/money.ts, lib/env.ts; 19 money + 3 env tests (exact cents/half-up/overflow; required configuration and defaults) | 7efc91e91d1dc1fe4f66e5c663e3c84209f9140b |
+| HTTP/error/origin/cookie helpers and tests | VERIFIED | lib/http.ts; 6 HTTP tests (JSON/Zod/AppError, sanitized 500, P2034 409, exact Origin, public user projection and separate cookies) | 7efc91e91d1dc1fe4f66e5c663e3c84209f9140b |
 
 ## Validation
 
@@ -33,12 +33,12 @@ Run owned unit tests without Docker, then existing unit regressions/lint/typeche
 
 ## Handoff
 
-Completed: None. Remaining: All deliverables.
-Red/green commands/results: Not run.
-Implementation/tested SHA; integrated main SHA: None.
-Uncommitted work: None in task branch; branch not created.
-Contract notes: Record exact DTO/helper exports and error statuses for all successors.
-Blockers: T00 not accepted; task not authorized/assigned.
-Push/PR status: Not pushed.
-Next action: After merge, T03 requires T01 also accepted.
+Completed: All three deliverables (see table). Remaining: successor phases (T03 auth integration; T10 documentation audit).
+Red/green commands and results: red = missing-module import failures for @/lib/money and @/lib/validation/schemas; first behavioral red = oversized quantity accepted when unitPrice was 0 → implementation made the quantity bound explicit; direct ZodError mapping added after 500-vs-422 mismatch; SKU normalization reordered after transform-order failure. Green = 58/58 tests across 6 files, lint 0, typecheck 0, build 0, all at 7efc91e91d1dc1fe4f66e5c663e3c84209f9140b after origin/main pull --ff-only (no-op; main 237b01b unchanged).
+Implementation/tested SHA: 7efc91e91d1dc1fe4f66e5c663e3c84209f9140b. Integrated main SHA: 237b01b74e0c2bda135d84850c7a4ffc87799068.
+Uncommitted work: none at handoff; all evidence committed with card.
+Contract notes for successors (T03 first): registerSchema/loginSchema (Zod 4 strictObject; email trim+lowercase ≤254, password ≤72 UTF-8 bytes, ≥8 code points register-only, no trim) feed lib/auth/password.ts unchanged; readJson throws AppError(400 INVALID_JSON) for bad JSON/media type, AppError(422 VALIDATION_ERROR) with indexed field paths (items.0.quantity, root key _root) for schema failures; direct ZodError in handleRoute also maps to 422. errorResponse: AppError 4xx passthrough, anything else (including thrown 5xx AppError) sanitized 500; structural PrismaClientKnownRequestError+P2034+clientVersion → 409 TRANSACTION_CONFLICT (no Prisma import; T01 retry exhaustion rethrow satisfies it). assertSameOrigin compares request Origin header exactly to env BETTER_AUTH_URL (unstable across route helpers: reads process.env.BETTER_AUTH_URL; T03 may centralize with lib/env). forwardAuthResponse(login|register|logout): preserves every Set-Cookie header separately via getSetCookie, projects {user:{id,email,name}} to dataResponse 200/201, logout → 204, 400/401/404 → 401 INVALID_CREDENTIALS, 422 → 409 (register), 403/429 passthrough, malformed success → 500. lib/money parseMoney exact digit-by-digit cents (0..2147483647, no parseFloat), formatMoney $x,xxx.xx, calculateTotals half-up once on subtotal with subtotal×rate numerator safe-integer check; throws AppError(422 ARITHMETIC_BOUNDS) — importable by lib/services (T05–T07) without Prisma/env imports. readEnv (server-only) returns {databaseUrl,authUrl,authSecret,nodeEnv,taxRateBps} with omitted TAX_RATE_BPS=1100; rejects placeholders, malformed URLs, tax outside 0..10000; never discloses values. lib/types exports SessionUser, Page<T>, ApiErrorBody, ProductDto, InvoiceSummaryDto, InvoiceDetailDto, InvoiceItemDto, MoneyTotals, InvoiceStatus, and re-exports all *Input types. emptyBodySchema available for logout 204. UUIDs lowercase; calendarDateSchema validates real dates without timezone conversion.
+Blockers: none.
+Push/PR status: task/T02-contracts pushed (see chat for pushed SHA); main untouched.
+Next action: Coordinator review/acceptance/merge; only after DONE dispatch T03 (requires T01 accepted).
 Coordinator acceptance / merge SHA: Pending.
