@@ -4,7 +4,16 @@
   "base_branch": "main",
   "remote": "origin",
   "path_policy": "Absolute paths use workspace_root as a prefix; rebase that prefix onto the assigned worktree. /** owns a subtree. A worker may also edit its own card, and no other coordination document.",
-  "readiness_rule": "All depends_on tasks must be reviewed, merged and verified on origin/main; coordinator must assign READY and an exclusive owner before work starts.",
+  "readiness_rule": "Dependencies require coordinator acceptance, merged verification and approved-SHA ancestry on origin/main; stale REVIEW/Pending cards do not block or require post-approval commits. A unique explicit user dispatch (T001 normalizes to T01) supplies READY/exclusive assignment unless ownership conflicts; DB/port leases remain explicit. See skill sections 1 and 7.",
+  "acceptance_records": {
+    "T00": {
+      "status": "DONE",
+      "approved_task_sha": "7d880636bd1a045f3ff8eb4d01b893a8a91bb34c",
+      "tested_merge_sha": "997874c5325a53c26d68658ce1bfb3a1f466282e",
+      "branch": "task/T00-toolchain",
+      "verification": "Coordinator: frozen install, 22 unit tests, lint, typecheck and build exit 0. User approved merge; verify merge ancestry on fetched origin/main before dispatch. Integration/E2E deferred. Retain task branch unchanged."
+    }
+  },
   "worktree_policy": {
     "primary_checkout": "Coordinator supplies verified absolute PRIMARY; workers never edit its project files or run app installs/tests there.",
     "directory": "<PRIMARY>/.worktrees/<task-id>-<slug>",

@@ -1,5 +1,12 @@
 # Technical Context
 
+## Current T00 toolchain (supersedes template-only notes below)
+
+Accepted merge 997874c installs pinned Prisma CLI/client/pg adapter 7.9.1, BetterAuth 1.7.5, pg 8.23.0, bcryptjs 3.0.3, Zod 4.6.5, Vitest 5.0.1 and Playwright 1.63.0. Next/React unchanged. pnpm test unit runs 22 tests; bare pnpm test refuses missing integration/E2E suites during preflight. Schema/migrations/seed/features are not implemented yet. Env inventory is tracked with `!.env.example`; real env files remain ignored. Docker is available via `sg docker -c` in this session; Compose test profile uses localhost:5433/stockflow_test tmpfs, dev 5432 named volume. Leases required before DB/browser use. Coordinator merge install/unit/lint/typecheck/build checks passed.
+
+## Historical template baseline
+
+
 Workspace: `/home/areion/projects/eterna-take-home`. Installed template: Next.js 16.3.5, React 19.2.8, TypeScript 5, Tailwind v4, ESLint 9. Node 24.21.0, pnpm 12.4.2. Existing scripts: dev/build/start/lint. No application test harness, ORM/auth/UI kit installed yet.
 
 Read relevant bundled guides in `/home/areion/projects/eterna-take-home/node_modules/next/dist/docs/` before code. Dynamic params/headers/cookies are async. Root middleware convention deprecated in favor of optional proxy; do not rely on proxy/layout for authorization.

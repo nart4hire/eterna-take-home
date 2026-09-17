@@ -2,7 +2,7 @@
 
 Canonical graph: `/home/areion/projects/eterna-take-home/docs/execution/dependency-graph.json`. Business specification: `/home/areion/projects/eterna-take-home/implementation_plan.md`. Graph IDs/dependencies/ownership govern scheduling; cards govern acceptance/evidence. Reconcile disagreements before coding. Rebase documented absolute workspace prefixes onto the assigned worktree; never edit another checkout.
 
-Current authorization is planning resources only. Before dispatch, coordinator reviews/commits/publishes this baseline, obtains coding/push authorization and enables Docker WSL integration. No application task is assigned or implemented. Do not branch from origin/main until it contains these resources.
+T00 is user-approved and coordinator-verified at merge `997874c5325a53c26d68658ce1bfb3a1f466282e` (approved task tip `7d880636bd1a045f3ff8eb4d01b893a8a91bb34c`). The graph acceptance record supersedes its historical REVIEW/Pending handoff. Verify merge ancestry on fetched origin/main before dispatch. T01/T02 are dependency-eligible, not yet assigned. Docker is available (this session required `sg docker -c`); DB/port leases still apply.
 
 ## Dependency DAG
 
@@ -47,7 +47,7 @@ The skill owns detailed creation/resumption/cleanup gates. Path/branch collision
 
 ## Status and evidence
 
-TODO -> READY -> IN_PROGRESS -> REVIEW -> DONE; blockers use BLOCKED. Coordinator assigns READY/owner and accepted dependency merge revisions. Worker records IN_PROGRESS/REVIEW/BLOCKED only in its card; coordinator alone marks DONE after merged verification. READY also requires authorization/environment, not merely graph eligibility.
+TODO -> READY -> IN_PROGRESS -> REVIEW -> DONE; blockers use BLOCKED. An explicit user dispatch such as "please work on T001" uniquely resolves to T01 and supplies assignment/coding/task-branch push authorization unless another active owner conflicts. No separate READY commit is required. Worker records IN_PROGRESS/REVIEW/BLOCKED only in its card; coordinator acceptance plus verified merged code establishes DONE centrally. Historical REVIEW/Pending text does not block successors and must not trigger another commit on the approved branch. Check approved-SHA ancestry on fetched origin/main and coordinator verification evidence. DB/port leases remain explicit. Skill sections 1 and 7 govern qualification and coordinator merge/push with branch retention.
 
 Deliverable states: NOT_STARTED, IN_PROGRESS, VERIFIED, BLOCKED. VERIFIED requires file/test evidence at a named revision. Before/after upstream sync record commands/exit codes/tested implementation SHA. A final docs-only evidence commit may cite its tested parent; do not try to embed its own hash. Final chat records pushed HEAD. Later code changes invalidate earlier green claims until rerun. Keep API-contract notes in cards for T10.
 

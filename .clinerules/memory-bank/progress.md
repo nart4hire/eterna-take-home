@@ -1,5 +1,12 @@
 # Progress
 
+## Current acceptance — 2026-09-18
+
+T00 approved by user; task tip `7d880636bd1a045f3ff8eb4d01b893a8a91bb34c`, tested acceptance merge `997874c5325a53c26d68658ce1bfb3a1f466282e`. Coordinator frozen install / 22 unit tests / lint / typecheck / build all exit 0. No DB/browser rerun during acceptance; worker's real-PG parent/child reset smoke is recorded in its card. Integration/E2E remain deferred, not passed. Verify published merge ancestry before successors; retain branch unchanged. T01/T02 eligible for explicit dispatch, no successor assigned yet.
+
+The dated planning-baseline statements below (no harness, Docker unavailable, all acceptance pending) are historical, superseded by this acceptance and graph record. Skill now specifies coordinator merge/push verification, frozen retained branches, numeric short-dispatch aliases and evidence-based dependency qualification without post-approval status commits.
+
+
 ## Completed
 - Investigated template, requirements, existing planning draft and memory-bank rules.
 - Confirmed BetterAuth + Prisma + bcryptjs choice.
@@ -18,7 +25,7 @@ Dependency source: `/home/areion/projects/eterna-take-home/docs/execution/depend
 
 | Task | Status | Depends on | Completed deliverables |
 |---|---|---|---|
-| T00 Toolchain | TODO | None | None |
+| T00 Toolchain | DONE | None | Pinned toolchain/Compose, guarded harness (22 tests), env inventory; merge 997874c verified |
 | T01 Database | TODO | T00 | None |
 | T02 Contracts | TODO | T00 | None |
 | T03 Auth/seed | TODO | T01,T02 | None |
