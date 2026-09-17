@@ -1,0 +1,191 @@
+{
+  "schema_version": 1,
+  "workspace_root": "/home/areion/projects/eterna-take-home",
+  "base_branch": "main",
+  "remote": "origin",
+  "path_policy": "Absolute paths use workspace_root as a prefix; rebase that prefix onto the assigned worktree. /** owns a subtree. A worker may also edit its own card, and no other coordination document.",
+  "readiness_rule": "All depends_on tasks must be reviewed, merged and verified on origin/main; coordinator must assign READY and an exclusive owner before work starts.",
+  "worktree_policy": {
+    "primary_checkout": "Coordinator supplies verified absolute PRIMARY; workers never edit its project files or run app installs/tests there.",
+    "directory": "<PRIMARY>/.worktrees/<task-id>-<slug>",
+    "branch": "task/<task-id>-<slug>",
+    "creation": "Agent creates its exclusive worktree/branch from verified origin/main before edits. Coordinator publishes /.worktrees/ ignore rule before T00. Resume only verified owned state; collisions block.",
+    "execution": "Rebase all paths to WT; use explicit cwd there for edits, local dependencies, tests, commits and pushes. Git metadata and DB/ports remain shared.",
+    "cleanup": "After REVIEW handoff, passing checks, clean state, stopped owned processes, durable evidence and verified remote HEAD, agent uses git worktree remove without force. Inspect ignored artifacts first. Keep local/remote branches. Preserve worktree on blockers/conflicts/failure; never prune or delete others' work."
+  },
+  "resource_locks": {
+    "postgres-test": "One coordinator-granted holder across all worktrees for migration, seed, reset, integration and E2E runs. Release after child processes stop. Default localhost:5433/stockflow_test is shared.",
+    "next-e2e": "One holder for localhost:3100; acquired together with postgres-test. Never reuse another agent's server.",
+    "integration": "Coordinator serializes merges into main and central dashboard updates. Workers push task branches only."
+  },
+  "coordinator_only": [
+    "/home/areion/projects/eterna-take-home/docs/execution/**",
+    "/home/areion/projects/eterna-take-home/.clinerules/**",
+    "/home/areion/projects/eterna-take-home/.cline/skills/**",
+    "/home/areion/projects/eterna-take-home/AGENTS.md",
+    "/home/areion/projects/eterna-take-home/implementation_plan.md"
+  ],
+  "tasks": [
+    {
+      "id": "T00", "title": "Toolchain and test infrastructure",
+      "card": "/home/areion/projects/eterna-take-home/docs/tasks/T00-toolchain.md",
+      "depends_on": [], "requirements": ["A8", "N1", "N2", "N4"],
+      "owns": [
+        "/home/areion/projects/eterna-take-home/package.json",
+        "/home/areion/projects/eterna-take-home/pnpm-lock.yaml",
+        "/home/areion/projects/eterna-take-home/pnpm-workspace.yaml",
+        "/home/areion/projects/eterna-take-home/mise.toml",
+        "/home/areion/projects/eterna-take-home/.gitignore",
+        "/home/areion/projects/eterna-take-home/.env.example",
+        "/home/areion/projects/eterna-take-home/docker-compose.yml",
+        "/home/areion/projects/eterna-take-home/eslint.config.mjs",
+        "/home/areion/projects/eterna-take-home/vitest.config.ts",
+        "/home/areion/projects/eterna-take-home/playwright.config.ts",
+        "/home/areion/projects/eterna-take-home/scripts/test.ts",
+        "/home/areion/projects/eterna-take-home/tests/setup.ts",
+        "/home/areion/projects/eterna-take-home/tests/unit/test-harness.test.ts",
+        "/home/areion/projects/eterna-take-home/tests/unit/environment-example.test.ts",
+        "/home/areion/projects/eterna-take-home/tests/support/**"
+      ], "locks": ["postgres-test", "next-e2e"]
+    },
+    {
+      "id": "T01", "title": "PostgreSQL schema and persistence",
+      "card": "/home/areion/projects/eterna-take-home/docs/tasks/T01-database.md",
+      "depends_on": ["T00"], "requirements": ["A1", "I3", "I4", "V6", "N1"],
+      "owns": [
+        "/home/areion/projects/eterna-take-home/prisma.config.ts",
+        "/home/areion/projects/eterna-take-home/prisma/schema.prisma",
+        "/home/areion/projects/eterna-take-home/prisma/migrations/**",
+        "/home/areion/projects/eterna-take-home/lib/prisma.ts",
+        "/home/areion/projects/eterna-take-home/lib/services/transaction.ts",
+        "/home/areion/projects/eterna-take-home/tests/integration/database.test.ts",
+        "/home/areion/projects/eterna-take-home/tests/unit/transaction.test.ts"
+      ], "locks": ["postgres-test"]
+    },
+    {
+      "id": "T02", "title": "Shared contracts and pure helpers",
+      "card": "/home/areion/projects/eterna-take-home/docs/tasks/T02-contracts.md",
+      "depends_on": ["T00"], "requirements": ["A8", "I3", "V2", "V3", "N6"],
+      "owns": [
+        "/home/areion/projects/eterna-take-home/lib/env.ts",
+        "/home/areion/projects/eterna-take-home/lib/types.ts",
+        "/home/areion/projects/eterna-take-home/lib/validation/schemas.ts",
+        "/home/areion/projects/eterna-take-home/lib/money.ts",
+        "/home/areion/projects/eterna-take-home/lib/http.ts",
+        "/home/areion/projects/eterna-take-home/tests/unit/env.test.ts",
+        "/home/areion/projects/eterna-take-home/tests/unit/money.test.ts",
+        "/home/areion/projects/eterna-take-home/tests/unit/http.test.ts",
+        "/home/areion/projects/eterna-take-home/tests/unit/validation.test.ts"
+      ], "locks": []
+    },
+    {
+      "id": "T03", "title": "Authentication API and seed",
+      "card": "/home/areion/projects/eterna-take-home/docs/tasks/T03-auth.md",
+      "depends_on": ["T01", "T02"], "requirements": ["A1", "A2", "A3", "A4", "A5", "A6", "A7", "A9", "N3", "N6"],
+      "owns": [
+        "/home/areion/projects/eterna-take-home/lib/auth/**",
+        "/home/areion/projects/eterna-take-home/app/api/auth/**",
+        "/home/areion/projects/eterna-take-home/prisma/seed.ts",
+        "/home/areion/projects/eterna-take-home/tests/helpers.ts",
+        "/home/areion/projects/eterna-take-home/tests/integration/auth.test.ts",
+        "/home/areion/projects/eterna-take-home/tests/integration/seed.test.ts"
+      ], "locks": ["postgres-test"]
+    },
+    {
+      "id": "T04", "title": "UI foundation and authentication screens",
+      "card": "/home/areion/projects/eterna-take-home/docs/tasks/T04-ui-foundation.md",
+      "depends_on": ["T03"], "requirements": ["F1", "F5", "F6"],
+      "owns": [
+        "/home/areion/projects/eterna-take-home/components.json",
+        "/home/areion/projects/eterna-take-home/components/ui/**",
+        "/home/areion/projects/eterna-take-home/lib/utils.ts",
+        "/home/areion/projects/eterna-take-home/lib/client-api.ts",
+        "/home/areion/projects/eterna-take-home/components/auth-form.tsx",
+        "/home/areion/projects/eterna-take-home/components/logout-button.tsx",
+        "/home/areion/projects/eterna-take-home/components/pagination.tsx",
+        "/home/areion/projects/eterna-take-home/app/layout.tsx",
+        "/home/areion/projects/eterna-take-home/app/page.tsx",
+        "/home/areion/projects/eterna-take-home/app/globals.css",
+        "/home/areion/projects/eterna-take-home/app/error.tsx",
+        "/home/areion/projects/eterna-take-home/app/not-found.tsx",
+        "/home/areion/projects/eterna-take-home/app/(auth)/**",
+        "/home/areion/projects/eterna-take-home/app/(dashboard)/layout.tsx",
+        "/home/areion/projects/eterna-take-home/app/(dashboard)/loading.tsx",
+        "/home/areion/projects/eterna-take-home/app/(dashboard)/error.tsx",
+        "/home/areion/projects/eterna-take-home/tests/e2e/auth.spec.ts",
+        "/home/areion/projects/eterna-take-home/tests/unit/client-api.test.ts"
+      ], "locks": ["postgres-test", "next-e2e"]
+    },
+    {
+      "id": "T05", "title": "Products API",
+      "card": "/home/areion/projects/eterna-take-home/docs/tasks/T05-products-api.md",
+      "depends_on": ["T03"], "requirements": ["I1", "I2", "I3", "I4", "A6", "A7", "N6"],
+      "owns": [
+        "/home/areion/projects/eterna-take-home/lib/services/products.ts",
+        "/home/areion/projects/eterna-take-home/app/api/products/**",
+        "/home/areion/projects/eterna-take-home/tests/integration/products.test.ts"
+      ], "locks": ["postgres-test"]
+    },
+    {
+      "id": "T06", "title": "Invoice drafts API",
+      "card": "/home/areion/projects/eterna-take-home/docs/tasks/T06-invoice-drafts.md",
+      "depends_on": ["T05"], "requirements": ["V1", "V2", "V3", "V4", "V5", "V9", "V10", "A6", "A7", "N6"],
+      "owns": [
+        "/home/areion/projects/eterna-take-home/lib/services/invoices.ts",
+        "/home/areion/projects/eterna-take-home/app/api/invoices/route.ts",
+        "/home/areion/projects/eterna-take-home/app/api/invoices/[id]/route.ts",
+        "/home/areion/projects/eterna-take-home/app/api/invoices/[id]/items/route.ts",
+        "/home/areion/projects/eterna-take-home/tests/integration/invoices.test.ts"
+      ], "locks": ["postgres-test"]
+    },
+    {
+      "id": "T07", "title": "Invoice lifecycle and atomic stock",
+      "card": "/home/areion/projects/eterna-take-home/docs/tasks/T07-invoice-lifecycle.md",
+      "depends_on": ["T06"], "requirements": ["V5", "V6", "V7", "V8", "V9", "I4", "A6", "A7", "N6"],
+      "owns": [
+        "/home/areion/projects/eterna-take-home/lib/services/invoices.ts",
+        "/home/areion/projects/eterna-take-home/app/api/invoices/[id]/status/route.ts",
+        "/home/areion/projects/eterna-take-home/tests/integration/invoice-lifecycle.test.ts"
+      ], "locks": ["postgres-test"]
+    },
+    {
+      "id": "T08", "title": "Products UI",
+      "card": "/home/areion/projects/eterna-take-home/docs/tasks/T08-products-ui.md",
+      "depends_on": ["T04", "T05"], "requirements": ["F2", "F5", "F6"],
+      "owns": [
+        "/home/areion/projects/eterna-take-home/app/(dashboard)/products/**",
+        "/home/areion/projects/eterna-take-home/components/product-form.tsx",
+        "/home/areion/projects/eterna-take-home/components/product-list.tsx",
+        "/home/areion/projects/eterna-take-home/tests/e2e/products.spec.ts"
+      ], "locks": ["postgres-test", "next-e2e"]
+    },
+    {
+      "id": "T09", "title": "Invoices UI",
+      "card": "/home/areion/projects/eterna-take-home/docs/tasks/T09-invoices-ui.md",
+      "depends_on": ["T04", "T07"], "requirements": ["F3", "F4", "F5", "F6"],
+      "owns": [
+        "/home/areion/projects/eterna-take-home/app/(dashboard)/invoices/**",
+        "/home/areion/projects/eterna-take-home/components/invoice-form.tsx",
+        "/home/areion/projects/eterna-take-home/components/invoice-list.tsx",
+        "/home/areion/projects/eterna-take-home/components/invoice-actions.tsx",
+        "/home/areion/projects/eterna-take-home/components/product-picker.tsx",
+        "/home/areion/projects/eterna-take-home/tests/e2e/invoices.spec.ts"
+      ], "locks": ["postgres-test", "next-e2e"]
+    },
+    {
+      "id": "T10", "title": "Swagger and release verification",
+      "card": "/home/areion/projects/eterna-take-home/docs/tasks/T10-release.md",
+      "depends_on": ["T08", "T09"], "requirements": ["N1", "N2", "N3", "N4", "N5", "N6", "N7"],
+      "owns": [
+        "/home/areion/projects/eterna-take-home/lib/openapi.ts",
+        "/home/areion/projects/eterna-take-home/app/api/openapi.json/route.ts",
+        "/home/areion/projects/eterna-take-home/app/docs/page.tsx",
+        "/home/areion/projects/eterna-take-home/components/swagger-viewer.tsx",
+        "/home/areion/projects/eterna-take-home/README.md",
+        "/home/areion/projects/eterna-take-home/docs/requirements.md",
+        "/home/areion/projects/eterna-take-home/tests/unit/documentation.test.ts",
+        "/home/areion/projects/eterna-take-home/tests/e2e/docs.spec.ts"
+      ], "locks": ["postgres-test", "next-e2e"]
+    }
+  ]
+}

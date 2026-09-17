@@ -1,0 +1,58 @@
+# StockFlow execution dependencies
+
+Canonical graph: `/home/areion/projects/eterna-take-home/docs/execution/dependency-graph.json`. Business specification: `/home/areion/projects/eterna-take-home/implementation_plan.md`. Graph IDs/dependencies/ownership govern scheduling; cards govern acceptance/evidence. Reconcile disagreements before coding. Rebase documented absolute workspace prefixes onto the assigned worktree; never edit another checkout.
+
+Current authorization is planning resources only. Before dispatch, coordinator reviews/commits/publishes this baseline, obtains coding/push authorization and enables Docker WSL integration. No application task is assigned or implemented. Do not branch from origin/main until it contains these resources.
+
+## Dependency DAG
+
+```mermaid
+flowchart TD
+ T00["T00 Toolchain/test infrastructure"] --> T01["T01 PostgreSQL/persistence"]
+ T00 --> T02["T02 Contracts/helpers"]
+ T01 --> T03["T03 Auth API/seed"]
+ T02 --> T03
+ T03 --> T04["T04 UI foundation/auth"]
+ T03 --> T05["T05 Products API"]
+ T05 --> T06["T06 Invoice drafts API"]
+ T06 --> T07["T07 Invoice lifecycle"]
+ T04 --> T08["T08 Products UI"]
+ T05 --> T08
+ T04 --> T09["T09 Invoices UI"]
+ T07 --> T09
+ T08 --> T10["T10 Swagger/release"]
+ T09 --> T10
+```
+
+An edge requires accepted, merged code with recorded main revision, not merely a branch push. Requirement IDs denote contributed coverage; one task need not fully satisfy each mapped ID. A6/A7/N6 are verified per API family; F5/F6 per screen family; T10 audits all 36 IDs against actual tests.
+
+## Agent-owned worktree lifecycle
+
+Workers do not edit primary-checkout project files or install/test/build there. Coordinator publishes `/.worktrees/` ignore rule with this baseline before T00. Each exclusively assigned agent creates `<PRIMARY>/.worktrees/<task-id>-<slug>` on `task/<task-id>-<slug>` from verified origin/main; PRIMARY is the coordinator-confirmed absolute checkout, not a resumed linked worktree. Rebase all canonical paths to the feature worktree and explicitly set every command's cwd there. Local dependencies/builds/env are not copied or symlinked from another checkout.
+
+The skill owns detailed creation/resumption/cleanup gates. Path/branch collision or uncertain ownership -> pause; no alternate duplicate worktree. Agents commit, integrate main, revalidate, push their branch and verify remote HEAD. After durable REVIEW handoff and clean-state/ignored-artifact/process checks, each agent removes only its own worktree with non-forced `git worktree remove`. Keep feature branches for review. Report removal in chat/PR, not primary files. On blockers/conflicts/failed push or valuable local artifacts, preserve the worktree and report restart path/HEAD. Never force removal, prune others' worktrees, or resolve shared Git locks yourself. Git administration and database/port resources are still shared.
+
+## Scheduling and file/resource ownership
+
+- Sequential order: T00, T01, T02, T03, T04, T05, T06, T07, T08, T09, T10.
+- Source-edit parallelism: T01/T02; after T03, T04/T05; after T04+T05, T08 alongside T06 then T07; after T07, T08/T09 if still pending.
+- Parallel worktrees do not isolate databases. Coordinator grants one postgres-test lease for localhost:5433/stockflow_test; E2E also acquires next-e2e for port 3100. Record owner/worktree/acquisition in assignment channel. No lease -> wait; stale/unknown holder -> ask, never kill/reset its processes.
+- T06 -> T07 deliberately serializes `/home/areion/projects/eterna-take-home/lib/services/invoices.ts`. Other unordered tasks have disjoint source ownership. /** denotes a subtree; [id] is a literal Next segment, not a glob.
+- T00 installs all approved dependencies including selected shadcn primitives. T04 generates UI without modifying manifests. Missing dependency/version mismatch -> BLOCKED coordinator request, not silent generator changes.
+- T01 owns Prisma-backed transaction helper, implemented without T02 imports: retry exhaustion rethrows a recognized Prisma error for T02 error mapper to map to 409. T02 DTOs/status unions avoid generated Prisma imports. T03 checks compatibility at the join.
+- T00 harness owns schema-independent request/reset helpers and safety tests. T03 owns auth-backed tests/helpers.ts. T01 verifies migration, T03 seed. Do not create fake exported implementations to make foundation checks pass.
+- T04 verifies auth/client behavior; full protected-page assertions await T08/T09 when those pages exist. No temporary product/invoice pages in T04.
+- Workers edit only their own card and graph-owned files. Graph/skill/plan/AGENTS/memory bank are coordinator-only. Shared-contract fixes require pause, coordinated prerequisite amendment and affected-task revalidation. Ownership does not expire into unrestricted editing.
+- Reviewer/coordinator serializes main merges and central status updates. Conflict-free text merges do not prove compatibility; zero conflicts cannot be guaranteed.
+
+## Status and evidence
+
+TODO -> READY -> IN_PROGRESS -> REVIEW -> DONE; blockers use BLOCKED. Coordinator assigns READY/owner and accepted dependency merge revisions. Worker records IN_PROGRESS/REVIEW/BLOCKED only in its card; coordinator alone marks DONE after merged verification. READY also requires authorization/environment, not merely graph eligibility.
+
+Deliverable states: NOT_STARTED, IN_PROGRESS, VERIFIED, BLOCKED. VERIFIED requires file/test evidence at a named revision. Before/after upstream sync record commands/exit codes/tested implementation SHA. A final docs-only evidence commit may cite its tested parent; do not try to embed its own hash. Final chat records pushed HEAD. Later code changes invalidate earlier green claims until rerun. Keep API-contract notes in cards for T10.
+
+## Dispatch and handoff
+
+Prompt: "Implement assigned T05 using `/home/areion/projects/eterna-take-home/.cline/skills/implement-task-card/SKILL.md`. Coding and task-branch push are authorized; main merge is not. Dependencies are accepted at supplied revisions. Work only on owned files/card. Stop for conflicts/blockers; hand off in REVIEW."
+
+Cline supports /implement-task-card when enabled; other agents explicitly read SKILL.md. Supply task/owner, verified absolute PRIMARY checkout and exclusive task slug, dependency revisions, test leases and reviewer; the agent creates/removes its own worktree using the skill. Resume the verified existing task branch after interruption, never duplicate/reset it blindly. Independent review checks spec/card, tests, ownership, auth/stock/money and actual diff. On blockers report command/error/Git state/conflicting files/decision needed. No automatic resolve/abort/reset/rebase/stash/force-push. Successors start only after coordinator accepts and merges.
