@@ -35,6 +35,12 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
+
+# generated application/test artifacts
+/generated/
+/playwright-report/
+/test-results/
 
 # vercel
 .vercel

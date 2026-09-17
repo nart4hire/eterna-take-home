@@ -1,3 +1,11 @@
 allowBuilds:
+  # Prisma downloads its schema engine; esbuild installs its platform binary.
+  '@prisma/engines': true
+  # Optional dependency analytics installer is not needed.
+  '@scarf/scarf': false
+  esbuild: true
+  prisma: true
   sharp: false
   unrs-resolver: false
+minimumReleaseAgeExclude:
+  - lucide-react@1.47.0
