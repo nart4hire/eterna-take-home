@@ -1,0 +1,221 @@
+import { describe, it, expect } from "vitest";
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import {
+  assertSafeTestDatabase,
+  parseRunnerSubset,
+  runCommand,
+} from "../../scripts/test";
+import { resetTestDatabase, deletionOrder } from "../support/reset";
+
+/**
+ * T00 — N4/N2 harness tests.
+ * Pure tests (no Docker, no database): prove the runner refuses unsafe
+ * database targets, validates its subset argument, propagates child failures
+ * as nonzero exits, and constrains configuration used to claim coverage.
+ */
+
+const WT_ROOT = path.resolve(__dirname, "..", "..");
+const CANONICAL_TEST_URL =
+  "postgresql://stockflow:pw@localhost:5433/stockflow_test";
+const CANONICAL_DEV_URL = "postgresql://stockflow:pw@localhost:5432/stockflow_dev";
+
+describe("HARNESS T00: assertSafeTestDatabase target guard", () => {
+  it("T00-H1 accepts the canonical localhost:5433/stockflow_test URL", () => {
+    expect(() =>
+      assertSafeTestDatabase(CANONICAL_TEST_URL, CANONICAL_DEV_URL),
+    ).not.toThrow();
+  });
+
+  it("T00-H2 rejects non-PostgreSQL URLs", () => {
+    for (const url of [
+      "mysql://stockflow:pw@localhost:5433/stockflow_test",
+      "file:///tmp/stockflow_test",
+      "https://localhost:5433/stockflow_test",
+      "not-a-url",
+    ]) {
+      expect(() => assertSafeTestDatabase(url, CANONICAL_DEV_URL)).toThrow(
+        /PostgreSQL/i,
+      );
+    }
+  });
+
+  it("T00-H3 accepts both postgres:// and postgresql:// schemes for the safe target", () => {
+    expect(() =>
+      assertSafeTestDatabase(
+        "postgres://stockflow:pw@localhost:5433/stockflow_test",
+        CANONICAL_DEV_URL,
+      ),
+    ).not.toThrow();
+  });
+
+  it("T00-H4 rejects the development database coordinates (host/port/db collision)", () => {
+    const devSameHost =
+      "postgresql://stockflow:pw@localhost:5432/stockflow_dev";
+    expect(() => assertSafeTestDatabase(devSameHost, CANONICAL_DEV_URL)).toThrow(
+      /development/i,
+    );
+  });
+
+  it("T00-H5 rejects a database other than stockflow_test even on 5433", () => {
+    expect(() =>
+      assertSafeTestDatabase(
+        "postgresql://stockflow:pw@localhost:5433/stockflow",
+        CANONICAL_DEV_URL,
+      ),
+    ).toThrow(/stockflow_test/);
+  });
+
+  it("T00-H6 rejects ports other than 5433", () => {
+    for (const port of ["5432", "5434"]) {
+      expect(() =>
+        assertSafeTestDatabase(
+          `postgresql://stockflow:pw@localhost:${port}/stockflow_test`,
+          CANONICAL_DEV_URL,
+        ),
+      ).toThrow(/5433/);
+    }
+  });
+
+  it("T00-H7 rejects remote (non-loopback) hosts", () => {
+    for (const host of ["db.example.com", "10.0.0.5", "192.168.1.20"]) {
+      expect(() =>
+        assertSafeTestDatabase(
+          `postgresql://stockflow:pw@${host}:5433/stockflow_test`,
+          CANONICAL_DEV_URL,
+        ),
+      ).toThrow(/localhost/i);
+    }
+  });
+});
+
+describe("HARNESS T00: runner subset argument", () => {
+  it("T00-H8 accepts exactly unit | integration | e2e", () => {
+    expect(parseRunnerSubset("unit")).toBe("unit");
+    expect(parseRunnerSubset("integration")).toBe("integration");
+    expect(parseRunnerSubset("e2e")).toBe("e2e");
+  });
+
+  it("T00-H9 rejects unknown or missing subsets instead of guessing", () => {
+    for (const bad of ["", "all", "UNIT", "smoke"]) {
+      expect(() => parseRunnerSubset(bad)).toThrow(
+        /unit\|integration\|e2e|subset/i,
+      );
+    }
+    expect(parseRunnerSubset(undefined)).toBeUndefined(); // full suite per plan
+  });
+});
+
+describe("HARNESS T00: child failure propagation and process hygiene", () => {
+  it("T00-H10 runCommand surfaces a failing child's exit code as an error", () => {
+    expect(() =>
+      runCommand(
+        process.execPath,
+        ["-e", "process.exit(7)"],
+        path.resolve(__dirname, "..", ".."),
+      ),
+    ).toThrow(/exit code 7/);
+  });
+
+  it("T00-H11 runCommand succeeds and returns when the child exits zero", () => {
+    const result = runCommand(
+      process.execPath,
+      ["-e", "process.stdout.write('ok')"],
+      path.resolve(__dirname, "..", ".."),
+    );
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain("ok");
+  });
+});
+
+
+describe("HARNESS T00: configuration that prevents false coverage claims", () => {
+  const pkg = JSON.parse(
+    readFileSync(path.join(WT_ROOT, "package.json"), "utf8"),
+  ) as { scripts: Record<string, string> };
+
+  it("T00-H12 `pnpm test` is the explicit subset runner, not a bare pass-through", () => {
+    expect(pkg.scripts.test).toBe("tsx scripts/test.ts");
+  });
+
+  it("T00-H13 vitest config disables passWithNoTests so missing suites fail", () => {
+    const config = readFileSync(path.join(WT_ROOT, "vitest.config.ts"), "utf8");
+    expect(config).toMatch(/passWithNoTests:\s*false/);
+    expect(config).toMatch(/include:[\s\S]*tests/);
+  });
+
+  it("T00-H14 vitest config keeps files serial with a sane default timeout", () => {
+    const config = readFileSync(path.join(WT_ROOT, "vitest.config.ts"), "utf8");
+    expect(config).toMatch(/fileParallelism:\s*false/);
+    expect(config).toMatch(/testTimeout:\s*\d+/);
+  });
+
+  it("T00-H15 playwright pins one chromium worker, port 3100, no reused server", () => {
+    const config = readFileSync(
+      path.join(WT_ROOT, "playwright.config.ts"),
+      "utf8",
+    );
+    expect(config).toMatch(/reuseExistingServer:\s*false/);
+    expect(config).toMatch(/3100/);
+    expect(config).toMatch(/workers:\s*1/);
+    expect(config).toMatch(/chromium/);
+  });
+
+  it("T00-H16 compose test database is isolated on localhost:5433 with tmpfs and profile", () => {
+    const compose = readFileSync(
+      path.join(WT_ROOT, "docker-compose.yml"),
+      "utf8",
+    );
+    expect(compose).toMatch(/5433:5432/);
+    expect(compose).toMatch(/tmpfs:/);
+    expect(compose).toMatch(/profiles:([\s\S]*)test/);
+    expect(compose).toMatch(/stockflow_test/);
+    expect(compose).toMatch(/5432:5432/);
+    expect(compose).toMatch(/postgres:17/);
+  });
+});
+
+describe("HARNESS T00: schema-independent reset helper", () => {
+  it("T00-H17 reset refuses the development database before any mutation", async () => {
+    await expect(
+      resetTestDatabase(
+        "postgresql://stockflow:pw@localhost:5432/stockflow_dev",
+      ),
+    ).rejects.toThrow(/development|safe test database/i);
+  });
+
+  it("T00-H18 reset refuses remote hosts and wrong databases/ports", async () => {
+    await expect(
+      resetTestDatabase(
+        "postgresql://stockflow:pw@10.1.2.3:5433/stockflow_test",
+      ),
+    ).rejects.toThrow(/localhost/i);
+    await expect(
+      resetTestDatabase(
+        "postgresql://stockflow:pw@localhost:5433/other_db",
+      ),
+    ).rejects.toThrow(/stockflow_test/);
+  });
+
+  it("T00-H19 FK delete order runs children before parents and ends with user", () => {
+    const order = deletionOrder(["user", "product", "invoice", "invoice_item", "account", "session"], [
+      { child: "invoice_item", parent: "invoice" }, { child: "invoice_item", parent: "product" },
+      { child: "invoice", parent: "user" }, { child: "invoice", parent: "product" },
+      { child: "product", parent: "user" }, { child: "account", parent: "user" }, { child: "session", parent: "user" },
+    ]);
+    expect(order.length).toBeGreaterThan(0);
+    expect(order[order.length - 1]).toBe("user");
+    const position = (t: string) => order.indexOf(t.toLowerCase());
+    expect(position("invoice_item")).toBeLessThan(position("invoice"));
+    expect(position("invoice")).toBeLessThan(position("product"));
+    expect(position("session")).toBeLessThan(position("user"));
+    expect(position("account")).toBeLessThan(position("user"));
+  });
+
+  it("T00-H20 runner exposes the documented safety and child primitives", () => {
+    const runner = readFileSync(path.join(WT_ROOT, "scripts/test.ts"), "utf8");
+    expect(runner).toMatch(/runCommand/);
+    expect(runner).toMatch(/assertSafeTestDatabase/);
+  });
+});
+
