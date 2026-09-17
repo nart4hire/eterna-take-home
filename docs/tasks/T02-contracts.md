@@ -1,11 +1,11 @@
 # T02 — Shared contracts and pure helpers
 
-Status: TODO
-Owner: Unassigned
+Status: IN_PROGRESS
+Owner: Cline; exclusive T002 -> T02 user dispatch (implementation, commits and task-branch push authorized; no main merge). No DB/port leases needed.
 Depends on: T00
 Requirement IDs: A8, I3, V2, V3, N6
-Branch / worktree / base SHA: Not created
-Accepted dependency revisions: Not recorded
+Branch / worktree / base SHA: task/T02-contracts / /home/areion/projects/eterna-take-home/.worktrees/T02-contracts / 237b01b74e0c2bda135d84850c7a4ffc87799068
+Accepted dependency revisions: T00 approved tip 7d880636bd1a045f3ff8eb4d01b893a8a91bb34c; coordinator-tested merge 997874c5325a53c26d68658ce1bfb3a1f466282e. Both verified ancestors of fetched origin/main; retained branch tip matches approval. Acceptance graph record supersedes historical Pending card.
 
 ## Scope and ownership
 
