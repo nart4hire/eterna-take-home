@@ -4,12 +4,12 @@ Status: REVIEW
 Owner: T06 worker (`task/T06-invoice-drafts`)
 Depends on: T05 (accepted and merged)
 Requirement IDs: V1, V2, V3, V4, V5, V9, V10, A6, A7, N6
-Branch / worktree / base SHA: `task/T06-invoice-drafts` / `<PRIMARY>/.worktrees/T06-invoice-drafts` (PRIMARY `/home/areion/projects/eterna-take-home`) / base `6002599` = `origin/main`
-Accepted dependency revisions: T05 tip `d5eeaf3` (tested implementation `51ff472`, tested merge `6d05f4c`) — verified ancestor of `origin/main` `6002599` with `git merge-base --is-ancestor` before branching; T01 `a19d7c8`/`b801d3a`, T02 `fc14c2b`/`3f6a1d1` and T03 `bcad778`/`3e38219` are ancestors through T05's merge. `origin/main` did not advance during the task.
+Branch / worktree / base SHA: `task/T06-invoice-drafts` / `<PRIMARY>/.worktrees/T06-invoice-drafts` (PRIMARY `/home/areion/projects/eterna-take-home`) / base `6002599` = the `origin/main` at dispatch
+Accepted dependency revisions: T05 tip `d5eeaf3` (tested implementation `51ff472`, tested merge `6d05f4c`) — verified ancestor of `origin/main` `6002599` with `git merge-base --is-ancestor` before branching; T01 `a19d7c8`/`b801d3a`, T02 `fc14c2b`/`3f6a1d1` and T03 `bcad778`/`3e38219` are ancestors through T05's merge. `origin/main` did not advance during the first verification round; T04 was then accepted and merged, so main is now `f8f2763` and this branch has been integrated with it and re-verified (see the post-merge section below).
 
 ## Dependency cross-check: T04 (Playwright removal, container work)
 
-T04 (`task/T04-ui-foundation`, still unreviewed at dispatch) carries **AMEND-T04-1**: Playwright and the entire browser layer are removed (`playwright.config.ts`, `@playwright/test`, `test:e2e`, the runner's `e2e` subset, the `next-e2e` lease, every `tests/e2e/**` file), the T04/T08/T09/T10 cards are amended to a manual reviewer checklist, and T04 adds `Dockerfile`/`.dockerignore`/`docker/**` plus a compose `app` service. Cross-check result at base `6002599`: **T04 does not block T06**.
+T04 (`task/T04-ui-foundation`) carries **AMEND-T04-1**: Playwright and the entire browser layer are removed (`playwright.config.ts`, `@playwright/test`, `test:e2e`, the runner's `e2e` subset, the `next-e2e` lease, every `tests/e2e/**` file), the T04/T08/T09/T10 cards are amended to a manual reviewer checklist, and T04 adds `Dockerfile`/`.dockerignore`/`docker/**` plus a compose `app` service. Cross-check result at base `6002599`: **T04 does not block T06**. (Status update: at dispatch T04 was unreviewed; it has since been accepted — graph `acceptance_records.T04`, approved tip `e22cefc`, tested merge `e30b194` — and merged into main `f8f2763`, which is the revision this branch is now integrated with.)
 
 - No path overlap: T04 changes UI/styles/client-helper files, dev/container files, T00-owned harness paths and central documents. T06 owns `lib/services/invoices.ts`, `app/api/invoices/**` and `tests/integration/invoices.test.ts`. T04 does not touch the T06 card or T06's graph entry, so neither merge order can produce a conflict on my owned paths.
 - No requirement interaction: T06's IDs (V1–V5, V9, V10, A6, A7, N6) contain no UI (`F*`) or browser/harness IDs, and this card never referenced browser tests. Removing Playwright deletes no T06 coverage obligation.
@@ -78,6 +78,33 @@ Behavior proven by execution, not by reading code: stock is byte-identical after
 - Limitation: no metadata editing endpoint exists (plan scope), so `customerName`, dates and `notes` are fixed once a draft is created; `PUT .../items` never touches them.
 - Not claimed: issue/paid/cancel behaviour, stock deduction or restoration, and any UI (`F3`/`F4`). Non-draft fixtures in this suite are written through Prisma precisely because the status route belongs to T07.
 
+## Review findings and discrepancy log (for coordinator review)
+
+A read-only `review-task-card` pass over this branch was requested by the coordinator. That pass changed no file and executed no application test; it produced the walkthrough now stored at `agent_explanations/T06.md` plus the items below. Corrections inside this worker-owned card are already applied; every decision item is deliberately left untouched for the coordinator.
+
+### Corrections applied to this card
+
+1. **Push-status line equated the tested revision with the remote tip (corrected).** It claimed "remote HEAD verified equal to `09dffee`". The pushed tip is `3103517`; `09dffee` is the tested *code* revision, and `git diff --name-only 09dffee 3103517` shows only this card. No code change follows.
+2. **"`origin/main` did not advance" was true only for the first round (corrected).** T04 was accepted and merged afterwards, so main is `f8f2763` and this branch is now integrated with it and re-verified; the numbers are in the post-merge section.
+3. **T04 was described as "still unreviewed at dispatch" (corrected).** T04 is now DONE (approved tip `e22cefc`, tested merge `e30b194`), which removes the last scheduling reason to defer the T06 review.
+
+### Decisions requested
+
+4. **A 404 body that carries `fields`.** `productNotFound` returns 404 with `fields["items.<i>.productId"]` — the only 404 in the API with field detail (T05's 404s have none). It is deliberate (the client must know which row to fix) and matches the plan's "foreign identifier returns 404, including nested product references", but T10 has to document it or OpenAPI will look inconsistent. *Keep, or drop the fields and rely on the message?*
+5. **`409 INVOICE_NOT_EDITABLE` for non-draft item edits** rather than 404/422: the invoice exists and only its state forbids the operation. *Confirm the mapping before T07 builds on it.*
+6. **Item ids are not stable across a replacement** (`deleteMany` + `createMany`), so `InvoiceItem.id` changes on every draft edit and T09 must key rows on `productId`/`position`. *Accept as documented contract, or switch to an upsert-style merge?*
+7. **`readEnv(process.env)` on every create**, so an invalid `DATABASE_URL`/`BETTER_AUTH_SECRET`/`TAX_RATE_BPS` turns a draft create into a sanitized 500. *Accept (config errors are 500) or read only `TAX_RATE_BPS`?*
+8. **T06 vs the plan's Functions table.** The plan lists `transitionInvoice`/`assertTransition` in `lib/services/invoices.ts`; this task omits them per its card scope and the graph's T07 ownership. *Confirm the split so T07 can add them to the same file.*
+
+### Coverage gaps and awareness items (no change proposed here)
+
+9. **Untested edges:** `PUT /api/invoices/<well-formed-unknown-uuid>/items` is not pinned directly (only the foreign-owner 404 is); retry-exhaustion `409 TRANSACTION_CONFLICT` is not exercised for invoices (T01's unit test covers the helper only); there is no `status` filter combined with pagination case; `updatedAt` semantics are never asserted. All four are purely additive tests.
+10. **The fixture uses the module under test:** `createInvoiceFixture` calls `calculateTotals` from `lib/money.ts` to build fixture totals. V2's assertions use hand-computed values (5895/648/6543 and 25/3/28), so only fixture validity is at stake — flagged for an explicit nod.
+11. **Write ordering in `replaceInvoiceItems`:** the version-guarded `updateMany` runs before `deleteMany`/`createMany`. Correct inside one transaction (a failing insert rolls the version bump back too); flagged so the lock order on one invoice row plus its items is consciously approved.
+12. **`findMany` + `count` are outside a transaction**, so `total` can differ from `data` by one under a concurrent write — inherited from T05 and disclosed rather than fixed.
+13. **No `P2002` mapping for `invoiceNumber`.** A collision would be a sanitized 500 instead of a 409; the number embeds a fresh UUID, so it is effectively unreachable. Disclosed, not mapped.
+14. **`snapshotItems` comment precision:** it validates stock "for every line", which holds because a retained line must still resolve to an active owned product. Worth stating explicitly when T07 reuses the helper.
+
 ## Handoff
 
 Completed: all three deliverables — the owner-scoped invoice draft service, the three route modules and the 28-case PostgreSQL suite (V1–V5, V9, V10, A6, A7, N6) — verified at `09dffee`.
@@ -87,7 +114,7 @@ Implementation/tested SHA; integrated main SHA: `e738746` (red), `6bbd654` (impl
 Uncommitted work: none (clean tree; `.env`, `generated/`, `.next` and `node_modules` are ignored local artifacts).
 Contract notes: recorded in the section above for T07/T09/T10.
 Blockers: none. T04's Playwright removal and container work do not block this task (cross-check section above).
-Push/PR status: pushed as `task/T06-invoice-drafts`; remote HEAD verified equal to `09dffee`. No pull request opened and no main merge attempted.
+Push/PR status: pushed as `task/T06-invoice-drafts`. At the first push the remote tip was `3103517` (= this card's docs commit) while the *tested code* revision was `09dffee`; the original wording here incorrectly equated the two, and correction 1 in the discrepancy log below records that. No pull request opened and no main merge attempted.
 Next action: coordinator review, then T07 after acceptance and merge; this worker relinquishes `lib/services/invoices.ts` editing.
 Coordinator acceptance / merge SHA: Pending.
-Proposed central updates (coordinator-owned, not edited here): mark T06 REVIEW in the graph/dashboard, add a T06 acceptance record on merge, and optionally move this walkthrough to `agent_explanations/T06.md`, which is not a graph-owned path.
+Proposed central updates (coordinator-owned, not edited here): mark T06 REVIEW in the graph/dashboard, add a T06 acceptance record on merge, and — per the coordinator's explicit instruction in this session — the review walkthrough is being added at `agent_explanations/T06.md` (not a graph-owned path, following the accepted precedent of `agent_explanations/T03.md` and `T04.md`).
