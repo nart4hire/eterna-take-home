@@ -217,19 +217,37 @@ Unexplainable code is worse than no code.
 
 ### Submission checklist
 
-- [ ] `git clone` → follow README → app runs, with **no undocumented steps**
-- [ ] `.env.example` present; no real secrets committed
-- [ ] Seed script works; demo credentials in README
-- [ ] Register → login → logout works
-- [ ] Protected endpoints return 401 without a credential
-- [ ] Products: create, list, search, paginate, update, delete
-- [ ] Invoice: create with multiple lines, correct subtotal / tax / total
-- [ ] Cannot invoice more than stock on hand
-- [ ] Issuing decrements stock; cancelling an issued invoice restores it
-- [ ] Illegal status transitions are rejected
-- [ ] Changing a product price does not alter an existing invoice
-- [ ] Tests run with a single documented command and pass
-- [ ] More than one commit, with readable messages
+*(Marked by T10 at the release verification, 2026-09-18. Each box names the evidence that closed it;
+the automated rows were re-run at the tested revision recorded in `docs/requirements.md`.)*
+
+- [x] `git clone` → follow README → app runs, with **no undocumented steps** — clean-clone rehearsals B
+      (local: install → migrate → seed → `pnpm dev`) and C (`docker compose up --build`); rehearsal A
+      found a real gap here (fresh clone could not seed or start), fixed and re-verified
+- [x] `.env.example` present; no real secrets committed — `tests/unit/environment-example.test.ts`;
+      `.env` stays git-ignored, only local-only placeholders are tracked
+- [x] Seed script works; demo credentials in README — `tests/integration/seed.test.ts`; the README's
+      `demo@stockflow.local` credentials signed in with HTTP 200 on two fresh clones
+- [x] Register → login → logout works — `tests/integration/auth.test.ts` (A1, A2, A3, A9) plus the
+      user's browser passes on the auth screens
+- [x] Protected endpoints return 401 without a credential — `tests/integration/products.test.ts` and
+      `tests/integration/invoices.test.ts` ("A6: every … requires credentials before parsing input")
+- [x] Products: create, list, search, paginate, update, delete — `tests/integration/products.test.ts`
+      (I1, I2, I3) plus the products reviewer checklist
+- [x] Invoice: create with multiple lines, correct subtotal / tax / total — `tests/integration/invoices.test.ts`
+      (V1, V2, V3)
+- [x] Cannot invoice more than stock on hand — `tests/integration/invoices.test.ts` › V5 and
+      `tests/integration/invoice-lifecycle.test.ts` › "V5: issue rechecks the live stock of every line"
+- [x] Issuing decrements stock; cancelling an issued invoice restores it — `tests/integration/invoice-lifecycle.test.ts`
+      (V6, V7)
+- [x] Illegal status transitions are rejected — `tests/integration/invoice-lifecycle.test.ts` ›
+      "V8: transition matrix, terminal states and repeats"
+- [x] Changing a product price does not alter an existing invoice — `tests/integration/invoices.test.ts` ›
+      "V4: snapshots survive product changes and draft edits"
+- [x] Tests run with a single documented command and pass — `pnpm test` = unit 90/90 + integration
+      136/136 on real PostgreSQL
+- [x] More than one commit, with readable messages — 118 commits, 17 `--no-ff` acceptance merges, one
+      branch per task, red/green commits inside each (`git log --oneline --graph`)
+
 
 ---
 

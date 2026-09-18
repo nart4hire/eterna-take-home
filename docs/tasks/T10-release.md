@@ -1,26 +1,18 @@
 # T10 — Swagger and release verification
 
-Status: IN_PROGRESS — Swagger/documentation slice VERIFIED and handed off in REVIEW; release deliverables pending T09
+Status: IN_PROGRESS — all deliverables complete and verified at the release revision; coordinator acceptance pending
 Owner: T10 worker (Cline), dispatched by the user 2026-09-18
-Depends on: T08 (accepted), T09 (in progress — see the early-start note)
+Depends on: T08 (accepted), T09 (accepted and merged)
 Requirement IDs: N1, N2, N3, N4, N5, N6, N7
-Branch / worktree / base SHA: `task/T10-release` in `<PRIMARY>/.worktrees/T10-release`, branched from verified `origin/main` `7bd5f6855d3f099eecb72afecd1403f03461af8f`
-Accepted dependency revisions: T08 — accepted tip `10e1f2e`, tested merge `15d17a7` (ancestor of `origin/main`, verified by `git merge-base --is-ancestor`). T09 — not merged.
+Branch / worktree / base SHA: `task/T10-release` in `<PRIMARY>/.worktrees/T10-release`; branched from `origin/main` `7bd5f68`, then main (with T09 accepted at `b22d2cb`) merged in as `93c34aa`
+Accepted dependency revisions: T08 — accepted tip `10e1f2e`, tested merge `15d17a7`. T09 — accepted tip `b9c372c`, tested merge `b22d2cb` (both ancestors of `origin/main`, verified with `git merge-base --is-ancestor`); `origin/main` was `6f2af0e` when this branch integrated it.
 
-> **Early-start note (user direction, 2026-09-18).** The user dispatched T10 while T09 is still in
-> progress, on the assessment that the invoices UI does not touch the API or this task's files. This
-> branch therefore carries the Swagger/documentation slice only, built from verified `origin/main`
-> (`7bd5f68`, which already contains accepted T08). T09 owns `app/(dashboard)/invoices/**`,
-> `components/invoice-form.tsx`, `components/invoice-list.tsx`, `components/invoice-actions.tsx` and
-> `components/product-picker.tsx`; none of them is touched here, so the two branches do not overlap.
-> The T09-dependent work — the 36-ID ledger (`docs/requirements.md`), the fresh-worktree release
-> rehearsal and the clean-clone container rehearsal — remains NOT_STARTED and must be completed on
-> this task after T09 is accepted and merged. Nothing in this slice claims release readiness.
->
-> The specification covers the API surface of accepted T00–T08 (11 paths, 15 operations) and cannot
-> silently miss a T09 addition: `tests/unit/documentation.test.ts` walks `app/api/**/route.ts` and
-> compares the exported HTTP methods with the documented operations, so any new invoice handler makes
-> that test red until the specification is extended here.
+> **Early start (superseded, kept for the record).** T10 began while T09 was still in progress, by
+> explicit user direction, on the Swagger/documentation slice only. T09 has since been accepted
+> (`b22d2cb`) and merged into this branch (`93c34aa`, no conflicts); the T09-dependent work — the
+> 36-ID ledger, the fresh-clone rehearsal and the container rehearsal — is now complete below. T09
+> added no API handler, so the specification still matches the shipped surface exactly
+> (`tests/unit/documentation.test.ts` re-ran green on the merged revision).
 
 
 > **Requirement amendment (user, 2026-09-18):** Playwright was removed from the application (decision record on T04's card), so this card no longer owns `tests/e2e/docs.spec.ts`, the release rehearsal installs no browser and no release step depends on a browser phase. Two duties were added instead: the README must document the container workflow that T04 introduced ("clone → populate env where necessary → `docker compose up`"), and the 36-ID ledger must record F1–F6 as reviewer-checklist results (including "not exercisable" items) instead of browser-test titles.
@@ -48,10 +40,13 @@ Own T10 files in `/home/areion/projects/eterna-take-home/docs/execution/dependen
 
 | Deliverable | State | Evidence | Verified revision |
 |---|---|---|---|
-| OpenAPI/Swagger and tests | VERIFIED | `lib/openapi.ts` (OpenAPI 3.1 document built from the handler Zod schemas), `app/api/openapi.json/route.ts`, `app/docs/page.tsx` + `components/swagger-viewer.tsx` (standalone, local `swagger-ui-dist`), `tests/unit/documentation.test.ts` (11 cases). Evidence below. | `381ec6ce4fbba95bd7dc0a4a92835a6ea8649f3e` |
-| Complete README (including the `docker compose up` workflow) | IN_PROGRESS | `README.md` rewritten: container and local workflows, environment table, demo credentials from `prisma/seed.ts`, both documentation URLs, test commands and what the runner pins, behaviour rules, tech choices, scope cuts, one-more-week ideas, AI usage, troubleshooting. The release-time "actual hours" line and the T09-dependent screens remain outstanding. | `381ec6c` (same revision) |
-| 36-ID ledger with checklist-based F1–F6 evidence | NOT_STARTED | `docs/requirements.md` does not exist yet: F3/F4 depend on T09's reviewer checklist rows. | None |
-| Clean-clone and integrated release verification | NOT_STARTED | Needs T09 merged, the `postgres-test` lease and the container rehearsal. | None |
+| OpenAPI/Swagger and tests | VERIFIED | `lib/openapi.ts` (OpenAPI 3.1 document built from the handler Zod schemas), `app/api/openapi.json/route.ts`, `app/docs/page.tsx` + `components/swagger-viewer.tsx` (standalone, local `swagger-ui-dist`), `tests/unit/documentation.test.ts` (11 cases) | `381ec6c`, re-verified on main-integrated `93c34aa` |
+| `tech_spec.md` (requirement → implementation → tests) and the discrepancy log | VERIFIED | `tech_spec.md`: 36 requirement rows plus the cross-cutting money/bonus/scope rows, built by independent discovery from `project.md` + code + tests and then cross-checked against the plan, graph and cards; `docs/discrepancies.md`: D1–D11 with severity, disposition and the "checked and consistent" list | `a28fe3c` |
+| Complete README (including the `docker compose up` workflow) | IN_PROGRESS — **left to the author by user decision** | `README.md` carries the container and local workflows, environment table, demo credentials from `prisma/seed.ts`, both documentation URLs, test commands and what the runner pins, behaviour rules, tech choices, scope cuts, one-more-week ideas, AI usage and troubleshooting. The user reserved the final pass (hour count, bonus claims, endpoint table) for the human author, so no hours are claimed here | `381ec6c` |
+| 36-ID ledger with checklist-based F1–F6 evidence | VERIFIED | `docs/requirements.md`: all 36 IDs with responsible task, the actual suite/file/test title or checklist rows, result at the tested revision, and the unresolved gaps (F6 boundaries "not exercisable"; the README hour line) | `a28fe3c` |
+| Clean-clone and integrated release verification | VERIFIED | Rehearsal A (fresh clone, documented local workflow — found defect D11), rehearsal B (the same workflow after the fix: seed twice, `pnpm dev`, demo login, session, products), rehearsal C (`docker compose up --build` from a fresh clone, app used at `http://localhost:3000`), plus `pnpm test` 90/90 + 136/136 and lint/typecheck/build 0 on the main-integrated revision. Full command log in the Validation section | `a28fe3c` |
+| Defect found and fixed during release | VERIFIED | D11: a fresh clone could not seed or start (`MODULE_NOT_FOUND` / HTTP 500). Fixed in `a28fe3c` (`dev`, `db:migrate`, `db:seed` generate the client first) and pinned by harness test `T00-H27`; recorded in `docs/discrepancies.md` D11 and proposed for the graph's `post_acceptance_fixes` | `469f7eb` (red test) + `a28fe3c` (fix) |
+
 
 ## Validation
 
@@ -84,63 +79,88 @@ cookie scheme is required exactly on the twelve protected operations and absent 
 `register`/`login`/`GET /api/openapi.json`; `lib/openapi.ts` is imported by the route handler and the
 standalone page only; and no client screen contains a `/docs` link or the word `openapi`.
 
-Deliberately not exercised here: rendering Swagger UI in a browser (no browser suite exists by
-AMEND-T04-1, so this stays a reviewer-checklist item — "open <http://localhost:3000/docs> and confirm
-the operations render and the spec loads"), the `postgres-test`-dependent integration suites and the
-release/container rehearsals, all of which belong to the phase after T09 lands.
+## Release verification (after main with T09 was integrated into this branch)
+
+All commands below ran in `<PRIMARY>/.worktrees/T10-release` on the main-integrated revision
+`93c34aa` and the tested release revision `a28fe3c` (the last executable change; every later commit on
+this branch is documentation). The `postgres-test` lease was free (T09 concluded) and was used here;
+the coordinator's shared dev Compose project and port 3000 were left untouched while the container
+rehearsal ran under its own Compose project with the bundled postgres published on host port 5442.
+
+| Step | Result |
+|---|---|
+| `pnpm test` (unit + integration, real PostgreSQL under the lease) | unit 90/90 (9 files), integration 136/136 (6 files) — 226 tests |
+| `pnpm lint` / `pnpm typecheck` / `pnpm build` | 0 / 0 / 0; the route table lists `ƒ /api/openapi.json` and `○ /docs` beside the five API families |
+| Rehearsal A — fresh clone of the branch, no `node_modules`/`.next`/`generated`/`.env`, then the README's local workflow | `install --frozen-lockfile` 0, `db:migrate` 0, **`db:seed` exit 1 (`Cannot find module '@/generated/prisma/client'`)** and **`pnpm dev` HTTP 500 on `/login` (`Module not found: '@/generated/prisma/client'`)** — release-blocking defect D11; `pnpm test` 90/90 + 136/136, lint/typecheck/build 0, `pnpm start` smoke 200 |
+| Rehearsal B — second fresh clone, same workflow after the fix | `install` 0, `db:migrate` 0, `db:seed` 0 twice ("the seed command has been executed"), `pnpm dev`: `/login` 200, `/register` 200, `/docs` 200, `/api/openapi.json` 200, `/products` 307 → `/login`, demo login 200 + session 200 + seeded `DEMO-005` row returned, `/products` page 200 with the cookie |
+| Rehearsal C — fresh clone → `cp .env.example .env` + generated secret → `docker compose up --build` | image builds on the `mise.toml` pins, the entrypoint migrates, seeds and serves, and the running app answers at `http://localhost:3000` (evidence in the rehearsal log; the rehearsal's own Compose project is torn down afterwards) |
+| N7 git-history check | 118 commits, 17 accepted `--no-ff` merges, one branch per task with red/green commits inside each, rooted at "Initialize Repo" — no squashed or fabricated history |
+| `docs/requirements.md` | all 36 IDs recorded with task, actual test/evidence, result and gaps |
+
+Deliberately not exercised, and therefore not claimed: rendering Swagger UI in a browser (no browser
+suite exists by AMEND-T04-1 — the row stays on the reviewer checklist: open
+`http://localhost:3000/docs` and confirm the operations render and the spec loads), the loading/error
+*boundaries* (no screen throws on purpose, so they stay "not exercisable" per T04 row C3 / T09 row D5),
+and the README's final human pass (hour count and bonus claims, reserved for the author).
+
 
 
 ## Handoff
 
-Completed (Swagger/documentation slice): `lib/openapi.ts` (OpenAPI 3.1 document generated from the
-handler Zod schemas), `app/api/openapi.json/route.ts` (public, uncached, same-origin), `app/docs/page.tsx`
-+ `components/swagger-viewer.tsx` (standalone Swagger UI from the locally installed `swagger-ui-dist`,
-outside the `(dashboard)` shell, no session guard, no CDN, no client link), `README.md` (rewritten),
-and `tests/unit/documentation.test.ts` (11 cases, new unit suite total 90/90).
+Completed: the whole task at tested revision `a28fe3c` on main-integrated `93c34aa` —
+`lib/openapi.ts` (OpenAPI 3.1 document generated from the handler Zod schemas),
+`app/api/openapi.json/route.ts` (public, uncached, same-origin), `app/docs/page.tsx` +
+`components/swagger-viewer.tsx` (standalone Swagger UI from the locally installed `swagger-ui-dist`,
+outside the `(dashboard)` shell, no session guard, no CDN, no client link),
+`tests/unit/documentation.test.ts` (11 cases), `tech_spec.md` (36 requirement rows + cross-cutting
+rows, discovery-then-cross-check method documented), `docs/discrepancies.md` (D1–D11),
+`docs/requirements.md` (the 36-ID ledger with per-task evidence and gaps), the marked submission
+checklist in `project.md`, the always-green client generation fix for `dev`/`db:migrate`/`db:seed`
+with harness test `T00-H27`, and the release rehearsals A/B/C.
 
-Remaining: `docs/requirements.md` (the 36-ID ledger, with F1–F6 as reviewer-checklist results),
-the fresh-worktree release rehearsal, the clean-clone `docker compose up` rehearsal and the README
-"actual hours" line — all after T09 is accepted and merged, under the `postgres-test` lease.
+Remaining (deliberately): the README's final pass — the hour count (`project.md` §9.2) and the
+optional endpoint table — is reserved for the human author by user decision, so nothing here claims
+those hours. The loading/error *boundaries* stay "not exercisable" in the ledger, because no screen
+throws on purpose.
 
 Red/green commands/results: red `pnpm test unit` `1 failed | 8 passed` files / `9 failed | 81 passed`
-tests; green `pnpm test unit` 90/90, `pnpm lint` 0, `pnpm typecheck` 0 (cache cleared first),
-`pnpm build` 0 with `ƒ /api/openapi.json` and `○ /docs`, built-app HTTP checks 200/200/401/401 plus the
-artifact and no-CDN checks, port 3200 released afterwards.
+tests; green `pnpm test` 90/90 + 136/136, `pnpm lint` 0, `pnpm typecheck` 0 (cache cleared first),
+`pnpm build` 0 with `ƒ /api/openapi.json` and `○ /docs`; harness red `1 failed | 25 passed` → green
+`26 passed` for D11; rehearsals A (found D11) and B (fixed workflow: seed twice, `pnpm dev`, demo
+login, session, products) and C (container) as recorded in the Validation section.
 
 Implementation/tested SHA; integrated main SHA: tested revision
-`381ec6ce4fbba95bd7dc0a4a92835a6ea8649f3e` (commits `736e186` red test suite → `d257f7b` spec, route,
-page and viewer → `381ec6c` README). Integrated main SHA: none for this slice — it is not merged.
-Branch base is `origin/main` `7bd5f68`; no main integration was needed because the branch already sits
-on the current tip, and no main merge is authorized.
+`a28fe3c` (D11 red test `469f7eb` → fix `a28fe3c`; Swagger slice `736e186`→`d257f7b`→`381ec6c`; the
+main integration merge is `93c34aa`). Every commit after `a28fe3c` on this branch is documentation
+only, so the merged content will be the tested revision.
 
-Uncommitted work: none; this card's commit is documentation-only on top of the tested revision.
+Uncommitted work: none; the remaining commits on this branch are documentation.
 
 Contract notes: Swagger surface = `GET /api/openapi.json` (machine-readable) and `/docs` (standalone
 viewer, documented in the README only); session cookie names `better-auth.session_token` and
 `__Secure-better-auth.session_token` are both documented in the security scheme; the specification
 documents the flat `Page` envelope, the `DELETE`-with-JSON-body version guard, 422-on-malformed-path-id
 versus 404-on-unknown/foreign id, integer-cent money, origin enforcement on mutations, and every error
-code the request path can produce. Requirement gaps to record in the ledger: N5 has automated coverage
-for spec/route/handler agreement plus one manual browser item; N1/N4 stay open until the rehearsals run.
+code the request path can produce. Release-level notes for the author: the local workflow now
+self-generates the Prisma client in every documented command (D11); the invoice-number deviation and
+the production-only rate-limit caveat are D1/D2 in `docs/discrepancies.md`.
 
-Blockers: T09 is not accepted/merged, so the ledger and the release rehearsals cannot be completed
-honestly yet; the `postgres-test` lease and the container rehearsal are also still to be requested for
-that phase; the user-supplied "actual hours" figure is outstanding. Nothing in this slice is BLOCKED by
-a conflict or a failure.
+Blockers: none. Nothing was BLOCKED by a conflict, failure or unavailable resource; the `postgres-test`
+lease was free and used, the container rehearsal ran under its own Compose project, and the author's
+README pass is a deliberate hand-off rather than a blocker.
 
-Push/PR status: pushed to `origin/task/T10-release` (this branch); no PR opened; main untouched.
-Worktree: retained until the push is verified on `origin`, then removed without `--force` (`node_modules`,
-`.next`, `generated/` are ignored, reproducible build artifacts; the temporary `next start` on port 3200
-was stopped and both probes were deleted).
+Push/PR status: `origin/task/T10-release` carries the slice and the release work; no PR opened; main
+untouched by this worker. Coordinator acceptance is performed by the same session in the coordinator
+role and recorded below.
 
-Proposed coordinator record (central files are read-only to this worker): record T10 as
-IN_PROGRESS — Swagger/documentation slice in REVIEW at tested revision `381ec6c`, with T09 still the
-gate for the release deliverables; T09 adds no API handler, so the specification's operation set is
-expected to stay complete, but the documentation suite must be re-run on the post-T09 revision before
-the ledger and the rehearsals are attempted.
+Proposed central records (central files are read-only to the worker role): `acceptance_records.T10`
+with the approved tip and tested merge SHA; a `post_acceptance_fixes`-style entry for D11
+(`package.json`, `tests/unit/test-harness.test.ts`, red `469f7eb`, fix `a28fe3c`) since it touches
+T00-owned paths; memory-bank updates naming T10 as the last remaining task and the README's reserved
+human pass.
 
-Next action: coordinator review of the Swagger slice (spec against the handlers, the viewer separation
-from the client, ownership and the README claims), then either acceptance or review rework; afterwards
-this task resumes for the ledger and the release rehearsals once T09 is merged.
-Coordinator acceptance / merge SHA: Pending.
+Next action: coordinator merge of this branch into `main`, verification on the merged revision,
+`origin/main` push, and the central documentation/memory-bank update marking T10 DONE. The only work
+left after that is the human README pass.
+
 
