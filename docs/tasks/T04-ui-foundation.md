@@ -1,7 +1,7 @@
 # T04 — UI foundation and authentication screens
 
-Status: REVIEW
-Owner: T04 worker (chat dispatch "Let's implement T04" → implementation, commits and task-branch push authorized; main merge NOT authorized)
+Status: DONE — coordinator-accepted and merged on `2026-09-18` (approved tip `e22cefc`, tested code `f9f3bb9`, tested merge `e30b194`; see `acceptance_records.T04` in the graph and "Coordinator resolution (T04 closure)" below).
+Owner: T04 worker (chat dispatch "Let's implement T04" → implementation, commits and task-branch push authorized). The worker-era "main merge NOT authorized" restriction was later superseded when the user authorized the coordinator acceptance and `--no-ff` merge recorded on this card.
 Depends on: T03
 Requirement IDs: F1, F5, F6
 Branch / worktree / base SHA: `task/T04-ui-foundation` / `/home/areion/projects/eterna-take-home-2/.worktrees/T04-ui-foundation` / `14e8b7134cadeb9f348b35fb361d70575f374b29` (= fetched `origin/main` at creation)
@@ -71,9 +71,25 @@ Blockers: none. Limitations: no browser/E2E evidence by user decision; the error
 Push/PR status: `task/T04-ui-foundation` pushed to `origin` at `f9f3bb9`; `main` untouched.
 Review evidence (coordinator/reviewer addendum): walkthrough committed at `agent_explanations/T04.md`; independently re-verified in the reviewer worktree `.worktrees/T04-review` at `7ad9b80` — `pnpm install --frozen-lockfile` 0, `pnpm test:unit` **78/78 in 8 files**, `pnpm lint` 0, `pnpm typecheck` 0, and `pnpm build` **0 in a second clean worktree with no `.env` present** (route table matching the card), plus the live HTTP matrix (307/200/404/201/422/409/401/204/403) and the MCP checks recorded in the walkthrough. Not re-run by the reviewer: the 81-test integration suite (shared `stockflow_test` discipline) and the container rehearsal — both remain worker-recorded at `f9f3bb9`/`78edb09`.
 Review questions for the coordinator: (a) ruling on the worker-authored central-file edits listed in the addendum; (b) the stale revision-1 "Scope and ownership" paragraph; (c) the *not exercisable* ledger wording for logout, F5 and the boundaries; (d) whether `.mcp.json` should be committed (the AGENTS.md note references it, but no such file exists) and whether `.agents/**`/`skills-lock.json` are tracked or ignored; (e) recording a `next-dev` resource lock for the leased development port.
-Review/acceptance state: REVIEW at `7ad9b80`; every commit after it on this branch is documentation (`agent_explanations/T04.md` plus this addendum), so the tested code revision is unchanged. Merge, merged-revision re-verification and DONE remain coordinator actions.
-Next action: coordinator rules on the review questions above, then merges the branch tip (documentation-only commits added after `7ad9b80`) with `--no-ff` and re-verifies the merged revision; T08 also needs T05, T09 also needs T07.
-Coordinator acceptance / merge SHA: Pending.
+Review/acceptance state: reviewed at `7ad9b80`, then **accepted and merged** — approved tip `e22cefc60d366f5624e5524396f8bedf9c0ac56b`, tested code `f9f3bb93`, tested merge `e30b19499bb368a999428df143291014e5124fc8`. Every commit after `7ad9b80` on the branch is documentation (`agent_explanations/T04.md` plus this addendum), so the merge changed no tested code.
+Next action: none — T04 is closed. T08 needed T05 as well (accepted), and T09 needs the T07 acceptance merge.
+Coordinator acceptance / merge SHA: `e30b19499bb368a999428df143291014e5124fc8` (`--no-ff` over base `6002599`, no conflicts, merge tree identical to the branch tree; approved-SHA ancestry verified and both task refs still at `e22cefc`). `task/T04-ui-foundation` is frozen and retained unchanged at `e22cefc`.
+
+## Coordinator resolution (T04 closure, 2026-09-18)
+
+**Accepted and merged.** Approved task tip `e22cefc60d366f5624e5524396f8bedf9c0ac56b` (tested code `f9f3bb93`), tested merge `e30b19499bb368a999428df143291014e5124fc8` (`--no-ff` over base `6002599`, no conflicts, merge tree identical to the branch tree), merged-revision re-verification at `e30b194`: `pnpm install --frozen-lockfile` 0, `pnpm test unit` 78/78, `pnpm test integration` 81/81 on real PostgreSQL under the `postgres-test` lease, `pnpm lint`/`pnpm typecheck`/`pnpm build` 0. Durable record: `acceptance_records.T04` in `/home/areion/projects/eterna-take-home/docs/execution/dependency-graph.json`.
+
+**Rulings on the four open review questions of this card** — they stayed open in the acceptance record, which is why T04 kept resurfacing as unresolved after the merge:
+
+| # | Question | Ruling |
+|---|---|---|
+| (a) | Worker-authored central-file edits | Accepted by the user with the merge; the acceptance record lists the files. No further action. |
+| (b) | Stale revision-1 "Scope and ownership" paragraph | Retained as the historical revision-1 statement; the review addendum above records that AMEND-T04-1 supersedes it. |
+| (c) | "Not exercisable" ledger wording | Confirmed: F1's logout row, F5's every-dashboard-page row and both boundaries are recorded by T10 as *not exercisable*, never as passes. |
+| (d) | `.mcp.json`, `.agents/**`, `skills-lock.json` | `.mcp.json` is now committed at the repository root with exactly the content the bundled guide `node_modules/next/dist/docs/01-app/02-guides/mcp.md` prescribes, so the `AGENTS.md` note is accurate. `.agents/**` and `skills-lock.json` do not exist in the repository: recorded as absent, neither tracked nor ignored; if a later skill install creates them, the coordinator decides tracking then. |
+| (e) | `next-dev` resource lock | Recorded in the graph as a third lease beside `postgres-test` and `integration`, and referenced by `AGENTS.md` and the dependency guide. |
+
+**Why this section exists, and where it was written.** The acceptance above was already recorded while this card still read `Status: REVIEW`, "main merge NOT authorized" and `Coordinator acceptance / merge SHA: Pending` — text that made later sessions treat T04 as unfinished and keep asking for a T04 dispatch. Under the explicit user authorization of 2026-09-18, the coordinator closed the ambiguity in one documentation/config-only commit on `task/T07-invoice-lifecycle` (merged to `main` with T07); the memory bank's stale "Next:"/"Pending" statements and the project brief's "No other task has yet been assigned." were corrected by the same commit. Nothing executable changed, so T04's tested code revision `f9f3bb9` and merge `e30b194` remain exactly as accepted, and `task/T04-ui-foundation` is still frozen at `e22cefc`. Full entry: `post_acceptance_fixes` in the graph.
 
 ## Reviewer verification checklist (manual — the UI is not test-driven)
 

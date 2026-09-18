@@ -51,6 +51,9 @@ export async function runTests(subset?: Subset): Promise<void> {
     DATABASE_URL: testUrl, TEST_DATABASE_URL: testUrl, STOCKFLOW_DEV_DATABASE_URL: devUrl,
     BETTER_AUTH_SECRET: randomBytes(32).toString("hex"), BETTER_AUTH_URL: "http://localhost:3100",
     NODE_ENV: "test", STOCKFLOW_TEST_DATABASE_READY: "1",
+    // Invoice suites assert exact cents derived from the rate, so pin the documented default here
+    // instead of inheriting a developer's .env; a case that needs another rate overrides it itself.
+    TAX_RATE_BPS: "1100",
   });
   // Caller must hold the coordinator postgres-test lease.
   runCommand("docker", ["compose", "--profile", "test", "up", "-d", "--wait", "postgres-test"], root, env);
