@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { afterAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { GET as getInvoiceRoute } from "@/app/api/invoices/[id]/route";
 import { PUT as replaceItemsRoute } from "@/app/api/invoices/[id]/items/route";
 import { GET as listInvoicesRoute, POST as createInvoiceRoute } from "@/app/api/invoices/route";
@@ -9,6 +9,13 @@ import type { InvoiceDetailDto, InvoiceStatus, InvoiceSummaryDto, Page, ProductD
 import { createProductFixture, makeRequest, readErrorBody, registerAndLogin, withCookie } from "../helpers";
 
 afterAll(async () => { await getPrisma().$disconnect(); });
+
+/**
+ * Every total asserted here is the documented default 11% unless a case sets a temporary rate, so the
+ * file pins that baseline itself instead of inheriting whatever a local `.env` (or a missing one)
+ * happens to define. `withDefaultTaxRate` still exercises the unset-variable default explicitly.
+ */
+beforeAll(() => { process.env.TAX_RATE_BPS = "1100"; });
 
 /** The exact trusted origin the test runner exports as BETTER_AUTH_URL. */
 const TRUSTED_ORIGIN = "http://localhost:3100";
@@ -116,11 +123,31 @@ async function ownedProducts(userId: string, specs: [string, number, number][]):
 const softDeleteProduct = (id: string): Promise<unknown> =>
   getPrisma().product.update({ where: { id }, data: { deletedAt: new Date(), version: { increment: 1 } } });
 
+/**
+ * Restores TAX_RATE_BPS exactly. Reassigning the old value is not enough: `process.env.X = undefined`
+ * stores the string "undefined" (Node coerces it), which `lib/env.ts` rejects, so every later create
+ * answered with a sanitized 500. A populated local `.env` used to hide that behind an ambient 1100.
+ */
+function setTaxRate(value: string | undefined): string | undefined {
+  const previous = process.env.TAX_RATE_BPS;
+  if (value === undefined) delete process.env.TAX_RATE_BPS; else process.env.TAX_RATE_BPS = value;
+  return previous;
+}
+
+function restoreTaxRate(previous: string | undefined): void {
+  if (previous === undefined) delete process.env.TAX_RATE_BPS; else process.env.TAX_RATE_BPS = previous;
+}
+
 /** Runs work with a temporary TAX_RATE_BPS value and always restores the runner's environment. */
 async function withTaxRate<T>(value: string, work: () => Promise<T>): Promise<T> {
-  const previous = process.env.TAX_RATE_BPS;
-  process.env.TAX_RATE_BPS = value;
-  try { return await work(); } finally { process.env.TAX_RATE_BPS = previous; }
+  const previous = setTaxRate(value);
+  try { return await work(); } finally { restoreTaxRate(previous); }
+}
+
+/** Runs work with TAX_RATE_BPS unset, so the documented default 11% is what the service stores. */
+async function withDefaultTaxRate<T>(work: () => Promise<T>): Promise<T> {
+  const previous = setTaxRate(undefined);
+  try { return await work(); } finally { restoreTaxRate(previous); }
 }
 
 describe("A6: every invoice draft method requires credentials before parsing input", () => {
@@ -203,6 +230,34 @@ describe("A7 N6: invoices and their product references are strictly owner-scoped
     expect(error.code).toBe("NOT_FOUND");
     expect(error.fields?.["items.0.productId"]).toEqual(expect.any(Array));
     expect(await getPrisma().invoice.count()).toBe(0);
+  });
+
+  it("answers an unknown invoice id and a foreign product reference on the item route with 404 and no write", async () => {
+    const alice = await registerAndLogin();
+    const bob = await registerAndLogin();
+    const [aliceProduct] = await ownedProducts(alice.user.id, [["ALICE-4", 1299, 5]]);
+    const bobProduct = await createProductFixture(bob.user.id, { sku: "BOB-4", unitPrice: 100, quantityOnHand: 5 });
+    const invoice = await createInvoiceFixture(bob.user.id, [{ product: bobProduct, quantity: 1 }]);
+
+    // A well-formed id that resolves to nothing is a 404 for both the detail and the item route.
+    const unknownId = randomUUID();
+    const unknownRead = await read(bob.cookie, unknownId);
+    const unknownReplace = await replace(bob.cookie, unknownId, { version: 0, items: [line(bobProduct, 1)] });
+    expect([unknownRead.status, unknownReplace.status]).toEqual([404, 404]);
+    expect(await readErrorBody(unknownReplace)).toEqual({ error: { code: "NOT_FOUND", message: "Invoice not found" } });
+
+    // A foreign product on an owned invoice is 404 too, and names the offending line.
+    const foreignProduct = await replace(bob.cookie, invoice.id, { version: 0, items: [line(aliceProduct!, 2)] });
+    expect(foreignProduct.status).toBe(404);
+    const error = (await readErrorBody(foreignProduct)).error;
+    expect(error.code).toBe("NOT_FOUND");
+    expect(error.fields?.["items.0.productId"]).toEqual(expect.any(Array));
+
+    const stored = await getPrisma().invoice.findUniqueOrThrow({ where: { id: invoice.id }, include: { items: true } });
+    expect(stored).toMatchObject({ version: 0, subtotal: invoice.subtotal, taxAmount: invoice.taxAmount, total: invoice.total });
+    expect(stored.items).toHaveLength(1);
+    expect(stored.items[0]).toMatchObject({ productId: bobProduct.id, unitPrice: 100, quantity: 1, lineTotal: 100, position: 0 });
+    expect((await getPrisma().product.findUniqueOrThrow({ where: { id: aliceProduct!.id } })).quantityOnHand).toBe(5);
   });
 });
 
@@ -385,7 +440,7 @@ describe("V3: the configured tax rate is stored and reused", () => {
     const owner = await registerAndLogin();
     const [product] = await ownedProducts(owner.user.id, [["TAX-1", 1000, 10]]);
 
-    const defaultValue = await detailOf(await create(owner.cookie, invoiceBody([line(product!, 2)])));
+    const defaultValue = await withDefaultTaxRate(async () => detailOf(await create(owner.cookie, invoiceBody([line(product!, 2)]))));
     expect([defaultValue.taxRateBps, defaultValue.subtotal, defaultValue.taxAmount, defaultValue.total]).toEqual([1100, 2000, 220, 2220]);
 
     const fivePercent = await withTaxRate("500", async () => detailOf(await create(owner.cookie, invoiceBody([line(product!, 2)]))));
@@ -577,6 +632,22 @@ describe("V9: draft-only item editing with version guarding and atomic replaceme
     expect([2000, 3000]).toContain(stored.items[0]!.lineTotal);
     expect(stored.subtotal).toBe(stored.items[0]!.lineTotal);
   });
+
+  it("refreshes updatedAt on a successful edit and leaves it untouched on a rejected one", async () => {
+    const owner = await registerAndLogin();
+    const [product] = await ownedProducts(owner.user.id, [["TOUCH-1", 500, 9]]);
+    const created = await detailOf(await create(owner.cookie, invoiceBody([line(product!, 1)])));
+
+    // A real pause keeps the refreshed timestamp distinguishable from createdAt at millisecond resolution.
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    const replaced = await detailOf(await replace(owner.cookie, created.id, { version: created.version, items: [line(product!, 2)] }));
+    expect(Date.parse(replaced.updatedAt)).toBeGreaterThan(Date.parse(created.updatedAt));
+
+    const stale = await replace(owner.cookie, created.id, { version: created.version, items: [line(product!, 3)] });
+    expect(stale.status).toBe(409);
+    const stored = await getPrisma().invoice.findUniqueOrThrow({ where: { id: created.id } });
+    expect(stored.updatedAt.toISOString()).toBe(replaced.updatedAt);
+  });
 });
 
 describe("V10: paginated summaries, status filter and complete detail", () => {
@@ -603,6 +674,15 @@ describe("V10: paginated summaries, status filter and complete detail", () => {
     expect(drafts.data[0]).toMatchObject({ id: oldest.id, status: "DRAFT", customerName: "Oldest", issueDate: "2026-09-01", dueDate: "2026-09-30" });
     const issued = await pageOf(await list(owner.cookie, "status=ISSUED"));
     expect(issued.data.map((invoice) => invoice.id)).toEqual([middle.id]);
+
+    // The status filter also drives pagination: one filtered page, and a page past its end is empty.
+    const issuedPage = await pageOf(await list(owner.cookie, "status=ISSUED&pageSize=1&page=1"));
+    expect(issuedPage.pagination).toEqual({ page: 1, pageSize: 1, total: 1, totalPages: 1 });
+    expect(issuedPage.data.map((invoice) => invoice.id)).toEqual([middle.id]);
+    expect(await pageOf(await list(owner.cookie, "status=PAID&page=2&pageSize=1"))).toEqual({
+      data: [],
+      pagination: { page: 2, pageSize: 1, total: 1, totalPages: 1 },
+    });
   });
 
   it("returns complete ordered detail and rejects malformed, unknown or foreign ids", async () => {
@@ -682,6 +762,11 @@ describe("N6: consistent error contract for the invoice draft API", () => {
     expect(error.code).toBe("VALIDATION_ERROR");
     expect(error.fields?.version).toEqual(expect.any(Array));
     expect(error.fields?.items).toEqual(expect.any(Array));
+
+    // The whole-set replacement still requires at least one line.
+    const emptySet = await replace(owner.cookie, invoice.id, { version: invoice.version, items: [] });
+    expect(emptySet.status).toBe(422);
+    expect((await readErrorBody(emptySet)).error.fields?.items).toEqual(expect.any(Array));
 
     expect(await getPrisma().invoice.count()).toBe(1);
     expect(await getPrisma().invoiceItem.count()).toBe(1);
