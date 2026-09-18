@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useState, type KeyboardEvent } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -71,10 +71,22 @@ export function ProductPicker({ selectedProductIds, onSelect, disabled = false }
     };
   }, [page, requestKey, search]);
 
-  function submitSearch(event: FormEvent<HTMLFormElement>): void {
-    event.preventDefault();
+  /**
+   * The picker deliberately owns no <form>: it renders inside the invoice form, and a nested form
+   * is invalid HTML — the browser parser drops the inner start tag, so React's tree and the DOM
+   * disagree and hydration reports "<form> cannot be a descendant of <form>". The search region
+   * keeps its own controls and Enter is intercepted below, so pressing Enter in the search box
+   * searches instead of submitting the surrounding invoice form.
+   */
+  function runSearch(): void {
     setPage(1);
     setSearch(searchInput.trim());
+  }
+
+  function searchOnEnter(event: KeyboardEvent<HTMLInputElement>): void {
+    if (event.key !== "Enter") return;
+    event.preventDefault();
+    runSearch();
   }
 
   function clearSearch(): void {
@@ -90,21 +102,21 @@ export function ProductPicker({ selectedProductIds, onSelect, disabled = false }
 
   return (
     <div className="space-y-4">
-      <form onSubmit={submitSearch} className="flex flex-wrap items-end gap-2" aria-busy={loading}>
+      <div role="search" aria-busy={loading} className="flex flex-wrap items-end gap-2">
         <div className="min-w-56 flex-1 space-y-2">
           <Label htmlFor="product-picker-search">Find a product</Label>
           <Input
             id="product-picker-search"
-            name="search"
             type="search"
             autoComplete="off"
             placeholder="Name or SKU"
             value={searchInput}
             onChange={(event) => setSearchInput(event.target.value)}
+            onKeyDown={searchOnEnter}
             disabled={disabled}
           />
         </div>
-        <Button type="submit" variant="outline" disabled={disabled}>
+        <Button type="button" variant="outline" disabled={disabled} onClick={runSearch}>
           Search catalogue
         </Button>
         {search ? (
@@ -112,7 +124,7 @@ export function ProductPicker({ selectedProductIds, onSelect, disabled = false }
             Clear
           </Button>
         ) : null}
-      </form>
+      </div>
 
       <p className="text-muted-foreground text-sm">
         Search covers the whole catalogue — page through the results to reach products past the first {PAGE_SIZE} matches.
