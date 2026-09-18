@@ -1,11 +1,11 @@
 # T07 — Invoice lifecycle and atomic stock
 
-Status: TODO
-Owner: Unassigned
-Depends on: T06
+Status: IN_PROGRESS
+Owner: T07 worker (`task/T07-invoice-lifecycle`)
+Depends on: T06 (accepted and merged)
 Requirement IDs: V5, V6, V7, V8, V9, I4, A6, A7, N6
-Branch / worktree / base SHA: Not created
-Accepted dependency revisions: Not recorded
+Branch / worktree / base SHA: `task/T07-invoice-lifecycle` / `<PRIMARY>/.worktrees/T07-invoice-lifecycle` (PRIMARY `/home/areion/projects/eterna-take-home`) / base `ae380fd` = the `origin/main` at dispatch
+Accepted dependency revisions: T06 tip `8c1a8d3` (tested code `898c219`, tested merge `f296093`) — `git merge-base --is-ancestor f296093 origin/main` succeeded on fetched `origin/main` `ae380fd` before this branch was created; T01–T05 are ancestors through T06's merges.
 
 ## Scope and ownership
 
