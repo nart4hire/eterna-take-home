@@ -402,6 +402,40 @@ describe("V9/I4: drafts reserve nothing and every stock change bumps versions", 
     expect((await errorOf(stale)).code).toBe("VERSION_CONFLICT");
     expect(await productState(product!.id)).toMatchObject({ quantityOnHand: 6, version: 1 });
   });
+
+  it("freezes the item set after a transition, for issued, paid and cancelled invoices", async () => {
+    const owner = await registerAndLogin();
+    const [product, other] = await ownedProducts(owner.user.id, [["FREEZE-1", 1000, 10], ["FREEZE-2", 500, 10]]);
+
+    // Issued then paid: both non-draft states reject a line replacement with T06's item-edit contract.
+    const issued = await detailOf(await issue(owner.cookie, await draft(owner.cookie, [{ product: product!, quantity: 2 }])));
+    const issuedEdit = await replace(owner.cookie, issued.id, { version: issued.version, items: [line(other!, 1)] });
+    expect(issuedEdit.status).toBe(409);
+    expect(await errorOf(issuedEdit)).toEqual({ code: "INVOICE_NOT_EDITABLE", message: "Only draft invoices can have their items replaced" });
+
+    const paid = await detailOf(await pay(owner.cookie, issued));
+    const paidEdit = await replace(owner.cookie, paid.id, { version: paid.version, items: [line(other!, 1)] });
+    expect(paidEdit.status).toBe(409);
+    expect((await errorOf(paidEdit)).code).toBe("INVOICE_NOT_EDITABLE");
+
+    // Cancelled (the other terminal state) is frozen too.
+    const secondIssued = await detailOf(await issue(owner.cookie, await draft(owner.cookie, [{ product: product!, quantity: 1 }])));
+    const cancelled = await detailOf(await cancel(owner.cookie, secondIssued));
+    const cancelledEdit = await replace(owner.cookie, cancelled.id, { version: cancelled.version, items: [line(other!, 1)] });
+    expect(cancelledEdit.status).toBe(409);
+    expect((await errorOf(cancelledEdit)).code).toBe("INVOICE_NOT_EDITABLE");
+
+    // No rejected edit changed an item row, and the untouched product never moved.
+    const frozen = await invoiceState(issued.id);
+    expect(frozen).toMatchObject({ status: "PAID", version: 2 });
+    expect(frozen.items).toHaveLength(1);
+    expect(frozen.items[0]).toMatchObject({ productId: product!.id, quantity: 2 });
+    const frozenCancelled = await invoiceState(cancelled.id);
+    expect(frozenCancelled).toMatchObject({ status: "CANCELLED", version: 2 });
+    expect(frozenCancelled.items).toHaveLength(1);
+    expect(frozenCancelled.items[0]).toMatchObject({ productId: product!.id, quantity: 1 });
+    expect(await productState(other!.id)).toEqual({ quantityOnHand: 10, version: 0, deletedAt: null });
+  });
 });
 
 describe("A6/A7: the status endpoint authenticates owners only", () => {
