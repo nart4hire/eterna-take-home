@@ -46,7 +46,7 @@ After creation verify `git -C "$WT" rev-parse --show-toplevel` and branch. Every
 
 Map acceptance criteria/IDs to tests, including invalid input, ownership and bounds. Write tests first; observe meaningful expected red, implement minimally, green, refactor, rerun. Import/config failure alone is not behavioral red evidence. Foundation tasks stage real tests before schema/features exist; no fake implementations/skipped regressions.
 
-Read installed Next guides before app edits. Edit only graph-owned files plus your card. Shared changes require pause. Use real PostgreSQL/auth for integration; never SQLite/mocked Prisma for atomicity claims. Acquire coordinator postgres-test lease before migration/reset/seed/integration; E2E also needs next-e2e. No lease -> wait; worktrees share DB/ports. Unit tests may run independently.
+Read installed Next guides before app edits. Edit only graph-owned files plus your card. Shared changes require pause. Use real PostgreSQL/auth for integration; never SQLite/mocked Prisma for atomicity claims. Acquire coordinator postgres-test lease before migration/reset/seed/integration; no lease -> wait; worktrees share DB/ports. Unit tests may run independently. Browser/E2E tooling was removed from this project by user decision (Playwright uninstalled, no `next-e2e` lease exists), so UI work is verified by the owning card's reviewer checklist instead of browser tests; container work (`Dockerfile`, `.dockerignore`, compose `app` service) is authorized for T04 and, where necessary, T08/T09.
 
 ## 4. Verify and checkpoint
 

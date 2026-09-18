@@ -1,0 +1,20 @@
+# Build-context hygiene: dependencies, build output, local state and docs stay out of the image.
+node_modules
+.next
+generated
+.worktrees
+.git
+.gitignore
+.env*
+coverage
+*.tsbuildinfo
+next-env.d.ts
+playwright-report
+test-results
+docs
+agent_explanations
+.cline
+.clinerules
+implementation_plan.md
+project.md
+README.md

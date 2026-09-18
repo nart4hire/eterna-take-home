@@ -15,8 +15,7 @@
     "db:seed": "prisma db seed",
     "test": "tsx scripts/test.ts",
     "test:unit": "tsx scripts/test.ts unit",
-    "test:integration": "tsx scripts/test.ts integration",
-    "test:e2e": "tsx scripts/test.ts e2e"
+    "test:integration": "tsx scripts/test.ts integration"
   },
   "dependencies": {
     "@prisma/adapter-pg": "7.9.1",
@@ -41,7 +40,6 @@
   },
   "devDependencies": {
     "@apidevtools/swagger-parser": "13.0.0",
-    "@playwright/test": "1.63.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/pg": "8.23.1",
