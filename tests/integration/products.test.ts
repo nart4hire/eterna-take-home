@@ -444,3 +444,85 @@ describe("I4: soft delete preserves invoice references and reserves the SKU", ()
     expect(row.deletedAt).toBeInstanceOf(Date);
   });
 });
+
+describe("I2: search treats LIKE metacharacters as literal text", () => {
+  it("never lets % or _ act as wildcards", async () => {
+    const owner = await registerAndLogin();
+    const discounted = await createProductFixture(owner.user.id, { sku: "PCT-1000", name: "Discount 50% sticker" });
+    await createProductFixture(owner.user.id, { sku: "PLAIN-1", name: "Plain widget" });
+
+    // `%` matches only the row that literally contains one — never every row (the bug returned both).
+    expect(await search(owner.cookie, "%")).toEqual([discounted.id]);
+    expect(idsOf(await pageOf(await list(owner.cookie)))).toHaveLength(2);
+    // `_` is literal: no row contains one, and it must not stand in for any single character.
+    expect(await search(owner.cookie, "_")).toEqual([]);
+    expect(await search(owner.cookie, "PCT_1")).toEqual([]);
+    // A literal metacharacter inside real data is still searchable.
+    expect(await search(owner.cookie, "50%")).toEqual([discounted.id]);
+    expect(await search(owner.cookie, "50% s")).toEqual([discounted.id]);
+    // A literal backslash is inert too.
+    expect(await search(owner.cookie, "\\")).toEqual([]);
+  });
+});
+
+describe("I3 N6: SKU collision paths and input boundaries", () => {
+  it("rejects renaming a product onto another product's SKU", async () => {
+    const owner = await registerAndLogin();
+    const taken = await createProductFixture(owner.user.id, { sku: "TAKEN-1" });
+    const free = await createProductFixture(owner.user.id, { sku: "FREE-1" });
+
+    // The variant also exercises normalization on the update path.
+    const conflict = await patch(owner.cookie, free.id, { version: free.version, sku: " taken-1 " });
+    expect(conflict.status).toBe(409);
+    const error = (await readErrorBody(conflict)).error;
+    expect(error.code).toBe("DUPLICATE_SKU");
+    expect(error.fields?.sku).toEqual([expect.any(String)]);
+
+    const row = await getPrisma().product.findUniqueOrThrow({ where: { id: free.id } });
+    expect(row).toMatchObject({ sku: "FREE-1", version: free.version, name: free.name });
+    expect(await getPrisma().product.count()).toBe(2);
+    void taken;
+  });
+
+  it("awards one SKU to exactly one of two concurrent creates", async () => {
+    const owner = await registerAndLogin();
+    const body = { sku: "RACE-1", name: "Race", unitPrice: 100, quantityOnHand: 1 };
+
+    const [left, right] = await Promise.all([create(owner.cookie, body), create(owner.cookie, body)]);
+    expect([left.status, right.status].sort((a, b) => a - b)).toEqual([201, 409]);
+    expect(await getPrisma().product.count({ where: { sku: "RACE-1" } })).toBe(1);
+  });
+
+  it("accepts a 64-character SKU and rejects 65", async () => {
+    const owner = await registerAndLogin();
+    const atLimit = await create(owner.cookie, { sku: "S".repeat(64), name: "At the limit", unitPrice: 0, quantityOnHand: 0 });
+    expect(atLimit.status).toBe(201);
+    expect((await dataOf(atLimit)).sku).toHaveLength(64);
+
+    const tooLong = await create(owner.cookie, { sku: "T".repeat(65), name: "Too long", unitPrice: 0, quantityOnHand: 0 });
+    expect(tooLong.status).toBe(422);
+    expect((await readErrorBody(tooLong)).error.fields?.sku).toEqual(expect.any(Array));
+    expect(await getPrisma().product.count()).toBe(1);
+  });
+
+  it("requires a JSON body on DELETE and deletes nothing without one", async () => {
+    const owner = await registerAndLogin();
+    const product = await createProductFixture(owner.user.id);
+
+    const bare = await deleteProductRoute(makeRequest(`/api/products/${product.id}`, withCookie(owner.cookie)), detail(product.id));
+    expect(bare.status).toBe(400);
+    expect((await readErrorBody(bare)).error.code).toBe("INVALID_JSON");
+
+    const row = await getPrisma().product.findUniqueOrThrow({ where: { id: product.id } });
+    expect(row).toMatchObject({ deletedAt: null, version: product.version });
+  });
+
+  it("accepts a PATCH that only clears the description", async () => {
+    const owner = await registerAndLogin();
+    const product = await createProductFixture(owner.user.id, { description: "before" });
+
+    const cleared = await patch(owner.cookie, product.id, { version: product.version, description: null });
+    expect(cleared.status).toBe(200);
+    expect(await dataOf(cleared)).toMatchObject({ description: null, version: product.version + 1, name: product.name });
+  });
+});
