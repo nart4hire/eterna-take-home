@@ -88,7 +88,7 @@ pnpm typecheck
 pnpm build
 sg docker -c "cd <worktree> && pnpm test:integration"
 
-# the live HTTP matrix used for this revision (script kept byte-identical in /tmp/t09-live-matrix.sh)
+# the live HTTP matrix used for this revision (byte-identical copies: /tmp/t09-live-matrix.sh and appendix A of agent_explanations/T09.md)
 # it registers its own user against a leased dev server, creates fixtures, then checks pages:
 BASE=http://localhost:3102; ORIGIN=$BASE; JAR=/tmp/t09-cookies.txt; OUT=/tmp/t09-body.html
 
@@ -97,6 +97,28 @@ for n in $(seq 1 100); do curl -s -o /dev/null -X POST "$BASE/api/products" -b "
   -H "origin: $ORIGIN" -H 'content-type: application/json' \
   -d "{\"sku\":\"BULK$(printf '%03d' "$n")\",\"name\":\"Bulk Product $(printf '%03d' "$n")\",\"unitPrice\":999,\"quantityOnHand\":10}"; done
 ```
+
+## Review addendum (worker self-review, 2026-09-18)
+
+Requested by the coordinator after the REVIEW handoff ("do review-task-card for task T09 and put it in agent_explanations … put any discrepancies in your task card"). Reviewed revision: the branch tip that carried the tested implementation `05d503f`; comparison base `7bd5f68`. The review read the eight files at that revision, compared every claim in this card against the code, and **repaired nothing** — the branch stays at the tested revision so each item below is a coordinator decision, exactly as T08's O1–O10 were.
+
+Review record: `agent_explanations/T09.md` — a `review-task-card`-style walkthrough written at the coordinator's direction (self-review, not independent acceptance): summary/target, requirements and scope, architecture and mental model, a file-by-file walkthrough with line references and a concrete end-to-end path, a correctness/edge-case/security table, the evidence map with recorded red/green, this findings list, and **appendix A carrying the live HTTP matrix script byte-identically** to the executed one (verified by re-extracting and comparing). That appendix is the durable home for the script T08 recorded as homeless (T08's O9).
+
+### Findings awaiting a coordinator ruling
+
+| # | Finding | Severity | Suggested resolution |
+|---|---|---|---|
+| O1 | `components/invoice-list.tsx:53-65` — the status `<select>` is uncontrolled with an always-present `defaultValue`, so React 19 does not push a present-to-present change into the DOM: after **Clear** (or Back/Forward between two filtered addresses) the dropdown may keep showing the previous status while the rows reflect the URL. Source-level analysis, not reproducible here (no browser can start); reviewer row B2 confirms. | cosmetic | if confirmed, `key={status ?? "all"}` on the select or make it controlled |
+| O2 | `components/invoice-actions.tsx:201` — the footnote reads "Draft version N" on **issued** invoices too. | cosmetic wording | change to `Version {invoice.version}: …` |
+| O10 | `components/invoice-form.tsx:522-550` — a transport failure keeps the typed values but has no explicit retry; the still-enabled submit button is the retry, so this card's phrase "transport failures keep a retry" is looser than the code (`invoice-actions.tsx` does have a "Try again"). | documentation/UX choice | tighten the card wording, or add a retry button |
+| O3 | The filter always submits `?status=`, even for "All statuses" (normalized away by the page at `app/(dashboard)/invoices/page.tsx:36`), so addresses carry a redundant parameter. | cosmetic | optional empty-value guard |
+| O4 | The live matrix is narrower than the checklist suggests: it exercised DRAFT→ISSUED and DRAFT→CANCELLED but never an ISSUED→PAID transition, executed no component JavaScript (so the picker pager and the dialogs are unproven by it), and asserted the active-navigation highlight only on `/invoices`. Those paths are code-reviewed and (for PAID) API-tested by T07; rows B2/C5/C8/D4 close the gap in the browser. | coverage disclosure | reviewer closes it during the browser pass |
+| O5 | Lifecycle labels/badge variants exist in both `components/invoice-list.tsx:20-42` and `app/(dashboard)/invoices/[id]/page.tsx:23-52`, and `taxRateLabel` in both `components/invoice-form.tsx:39` and the detail page — forced by ownership, not an accident. | maintainability | leave, or collapse in a future shared-primitives task |
+| O6 | `components/invoice-actions.tsx:36-72` mirrors the service's transition table for rendering; a future T07 change could silently desynchronize the buttons (the server still refuses illegal actions, so the failure is a confusing 409). | maintainability | comment already present; no owned test path can pin it |
+| O7 | A draft's customer, dates and notes cannot be corrected after creation, because the only shipped editor contract is `PUT …/items` with `{version, items}`. | scope, matches the plan | accept, or plan a metadata PATCH in a later task |
+| O8–O9, O11–O12 | Streamed redirect/meta-refresh behaviour for the draft gate and the page clamp; static page `title`s (no `generateMetadata`); this walkthrough and the matrix script living outside graph-owned paths by user direction; a misconfigured `TAX_RATE_BPS` surfacing as a page error on `/invoices/new` rather than an API shape. | notes | recorded so they are not mistaken for oversights |
+
+Two decisions this addendum does **not** make: it does not patch O1/O2/O10 (that would invalidate `05d503f` as the tested revision and needs a newly authorized rework commit), and it does not accept the task. `agent_explanations/T09.md` is user-directed documentation outside this task's graph-owned paths, following the T00–T08 precedent; the review database `stockflow_t09` and the matrix fixtures described in the walkthrough (O12) remain in the dev container so appendix A can be re-run.
 
 ## Validation
 
@@ -136,6 +158,6 @@ Implementation/tested SHA: `05d503f` (all executable content). Integrated main S
 Uncommitted work: none in the task branch; the worktree carries only ignored `.env`, `node_modules`, `generated/` and `.next/` content.
 Contract notes for T10: routes are `/invoices` (status filter `?status=`, `?page=`), `/invoices/new`, `/invoices/[id]` and `/invoices/[id]/edit`; the screens call the shipped endpoints `GET/POST /api/invoices`, `GET /api/invoices/[id]`, `PUT /api/invoices/[id]/items` (strictly `{version, items}` — customer, dates, notes and the tax rate are frozen at creation) and `PATCH /api/invoices/[id]/status`, plus `GET /api/products?search=&page=&pageSize=` at 20 rows per picker page. The create page reads `TAX_RATE_BPS` on the server and the preview uses those integer basis points; the edit screen uses the rate persisted on the draft and the server stays authoritative, so the UI labels every preview provisional. Conflict handling: `VERSION_CONFLICT` reloads the saved draft and asks the user to review; `INVOICE_NOT_EDITABLE` and 404-without-fields point at the invoice or the list; item-scoped 404/409 messages render inline on `items.N.productId`/`items.N.quantity`; transport failures keep a retry with the typed values. An empty `?status=` means "all statuses" (the filter's default option) while an unknown value renders the invalid-parameter state. There are deliberately no URL-sticky success notices (a create or edit navigates to the invoice itself), unlike observation O1 on T08. Terminal invoices render no action buttons and a paid/cancelled invoice offers no edit link. The client app still exposes no developer documentation, and the Invoices navigation entry uses the T08 `NavLink` active state.
 Blockers: none.
-Push/PR status: branch `task/T09-invoices-ui` is prepared for its push to `origin/task/T09-invoices-ui` at the evidence commit; the push follows this REVIEW commit, and the pushed SHA is reported in the assignment channel rather than in another card commit.
+Push/PR status: `task/T09-invoices-ui` was pushed and verified at `252bec3` (tested implementation `05d503f`). This review addendum and `agent_explanations/T09.md` are a further documentation-only commit on the same branch; it is pushed after that commit, the resulting tip is verified against the remote, and it is reported in the assignment channel rather than in another self-referential card commit.
 Next action: coordinator review and acceptance; T10 (Swagger, README, 36-ID ledger) stays gated on the accepted merge of this task. No successor is started automatically and `main` is never touched from this branch.
 Coordinator acceptance / merge SHA: Pending.
