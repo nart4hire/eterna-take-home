@@ -10,6 +10,11 @@ ENV PNPM_HOME=/pnpm \
 
 RUN corepack enable && corepack prepare pnpm@12.4.2 --activate
 
+# Prisma warns (and can mis-detect its engine) without OpenSSL in slim images.
+RUN apt-get update -y \
+    && apt-get install -y --no-install-recommends openssl \
+    && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 
 # Dependencies first so source edits do not invalidate the install layer.
