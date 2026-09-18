@@ -202,4 +202,28 @@ retry button on the create form's transport failure).
 **Push status.** `413151f` plus this documentation commit are pushed to `origin/task/T09-invoices-ui`; the
 branch stays unmerged and `main` is untouched. REVIEW is not DONE — coordinator acceptance and the merge
 remain outstanding.
+
+## Small-fix pass before acceptance — `b3593a6` (2026-09-18)
+
+The user directed that every outstanding small finding be fixed and re-verified before acceptance. Four
+T09-owned files changed, +23/−2, no contract, schema, service, shared component or test file touched:
+
+| Item | Resolution |
+|---|---|
+| O1 | `components/invoice-list.tsx` — `key={status ?? "all"}` on the status `<select>`. React never re-applies `defaultValue` to an uncontrolled select, so the committed status now remounts the control and the dropdown can no longer keep a stale choice after Clear or Back/Forward. |
+| O2 | `components/invoice-actions.tsx` — the footnote reads "Version {n}:" instead of "Draft version {n}", so it is accurate on issued invoices too. |
+| O3 | `app/(dashboard)/invoices/page.tsx` — an explicitly empty `?status=` (the filter's "All statuses" option) is normalised away through the same streamed `redirect()` the page clamp already uses: the canonical all-statuses address is `/invoices`, keeping `?page=` when it is past the first page. **Contract note for T10:** the earlier "an empty `?status=` means all statuses" is now "an empty `?status=` redirects to the canonical address". |
+| O10 | `components/invoice-form.tsx` — a `retryable` flag plus a "Try again" submit button inside the failure alert, shown only for failures a re-submit can fix (transport or 5xx); the transport message now states that nothing was saved. Validation, version-conflict, not-editable and 404 paths keep their own recovery controls and offer no retry. |
+
+**Verification at `b3593a6`** (worktree `.worktrees/T09-invoices-ui-rework`, branch `task/T09-invoices-ui`):
+`pnpm install --frozen-lockfile` 0; `pnpm test:unit` 79/79 (8 files); `pnpm test:integration` 136/136 (6 files on
+real PostgreSQL under the `postgres-test` lease); `pnpm lint` 0; `pnpm typecheck` 0; `pnpm build` 0. The reviewer's
+live matrix re-ran on the leased port 3100 over `stockflow_t09`: **45/45**, adding three checks for this pass —
+the status dropdown renders the committed status as selected (O1, server side), the issued detail no longer
+contains "Draft version" (O2), and an empty `?status=` normalises to the canonical address (O3).
+
+**Residual evidence gap (disclosed, not a claim of a pass):** O1's client-side remount and O10's "Try again"
+button cannot be exercised without a browser, so they rest on the source semantics above plus lint/typecheck/build
+and remain browser rows. O4 therefore stays open as a coverage disclosure, and O5–O9, O11–O12 remain recorded
+notes; O13 is fixed in `413151f` and O14 is recorded for T10.
 Coordinator acceptance / merge SHA: Pending.
