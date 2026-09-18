@@ -50,6 +50,21 @@ Red then green, all commands executed in the worktree:
 
 Behavior proven by execution, not by reading code: stock is byte-identical after successful and failed draft operations; two concurrent same-version replacements produce exactly one 200 and one 409; an invalid second line leaves the original item row, version and totals untouched; a deleted product's snapshot stays readable while re-selecting it is 404.
 
+### Post-merge re-verification (round 2, after T04's accepted main)
+
+While this card was in REVIEW, T04 was accepted and merged (`f8f2763`, approved tip `e22cefc`, tested merge `e30b194`), so `origin/main` advanced past this branch's `6002599` base. Per the workflow the branch was integrated with the new main (`git pull --no-rebase --no-edit origin main`) at merge commit `57d28f8` — **no conflicts**, which matches the cross-check prediction — and then fully re-verified:
+
+| Gate | Command | Result |
+|---|---|---|
+| Install | `pnpm install --frozen-lockfile` | exit 0 with T04's lockfile (no `@playwright/test` in `node_modules`) |
+| Integration | `sg docker -c 'pnpm test integration'` | exit 0 — 5 files, `Tests 109 passed (109)`, `invoices.test.ts (28 tests)` |
+| Unit | `pnpm test unit` | exit 0 — 8 files, `Tests 78 passed (78)` (T04's `client-api.test.ts` + harness growth included) |
+| Lint / typecheck / build | `pnpm lint`, `pnpm typecheck`, `pnpm build` | exit 0 / 0 / 0, route table still lists `ƒ /api/invoices`, `ƒ /api/invoices/[id]`, `ƒ /api/invoices/[id]/items` |
+
+The T06 code paths at `57d28f8` are byte-identical to `09dffee` (`git diff --name-only 09dffee 57d28f8 -- lib/services/invoices.ts app/api/invoices tests/integration/invoices.test.ts` is empty); the merge only pulled in T04's UI, container and harness changes, which is why the post-merge row is the meaningful acceptance evidence and the pre-merge numbers are retained above as the original record.
+
+Lease note for this round: no vitest or other database-test process was running, and the only live process was another agent's `next dev --port 3100` (from the T04-review worktree, bound to the **dev** database on 5432). My run resets only `stockflow_test` on 5433, starts no dev server, and leaves the shared services and that process untouched.
+
 
 ## Contract notes (for T07, T09, T10)
 
@@ -109,12 +124,12 @@ A read-only `review-task-card` pass over this branch was requested by the coordi
 
 Completed: all three deliverables — the owner-scoped invoice draft service, the three route modules and the 28-case PostgreSQL suite (V1–V5, V9, V10, A6, A7, N6) — verified at `09dffee`.
 Remaining: nothing for T06. T07 owns `transitionInvoice`/`assertTransition` and the status route; T09/T10 consume the contract notes above.
-Red/green commands/results: red `sg docker -c 'pnpm test integration'` at `e738746` → exit 1, 27 failed | 81 passed (108); green at `09dffee` → exit 0, 5 files, 109/109 including 28 invoice cases. Also `pnpm test unit` 67/67, `pnpm lint` 0, `pnpm typecheck` 0, `pnpm build` 0 (three invoice routes).
-Implementation/tested SHA; integrated main SHA: `e738746` (red), `6bbd654` (implementation), `09dffee` (tested tip, adds the retained-snapshot arithmetic-bounds case); integrated main `6002599` = `origin/main` ("Already up to date").
+Red/green commands/results: red `sg docker -c 'pnpm test integration'` at `e738746` → exit 1, 27 failed | 81 passed (108); green at `09dffee` → exit 0, 5 files, 109/109 including 28 invoice cases. Also `pnpm test unit` 67/67, `pnpm lint` 0, `pnpm typecheck` 0, `pnpm build` 0 (three invoice routes). Round 2 re-verification on `57d28f8` (after integrating T04's accepted main `f8f2763`): `pnpm install --frozen-lockfile` 0, `pnpm test integration` exit 0 with 109/109 (28 invoice), `pnpm test unit` 78/78, lint/typecheck/build 0 — see the post-merge section above.
+Implementation/tested SHA; integrated main SHA: `e738746` (red), `6bbd654` (implementation), `09dffee` (round-1 tested code, adds the retained-snapshot arithmetic-bounds case), `3103517` (round-1 pushed tip), `f9bd210` (round-2 findings commit), `57d28f8` (round-2 merge of main + re-verified revision); integrated main `6002599` (round 1) then `f8f2763` = `origin/main` after T04's acceptance.
 Uncommitted work: none (clean tree; `.env`, `generated/`, `.next` and `node_modules` are ignored local artifacts).
 Contract notes: recorded in the section above for T07/T09/T10.
 Blockers: none. T04's Playwright removal and container work do not block this task (cross-check section above).
-Push/PR status: pushed as `task/T06-invoice-drafts`. At the first push the remote tip was `3103517` (= this card's docs commit) while the *tested code* revision was `09dffee`; the original wording here incorrectly equated the two, and correction 1 in the discrepancy log below records that. No pull request opened and no main merge attempted.
+Push/PR status: round 1 was pushed as `task/T06-invoice-drafts` at `3103517`. Round 2 (findings commit `f9bd210`, the main integration `57d28f8`, and this walkthrough/re-verification commit) is pushed immediately after this commit, so the remote tip becomes the commit carrying this line — verify with `git ls-remote origin refs/heads/task/T06-invoice-drafts`; the chat report records the exact pushed HEAD. The earlier wording here incorrectly equated the tested revision with the remote tip, and correction 1 in the discrepancy log above records that. No pull request opened and no main merge attempted.
 Next action: coordinator review, then T07 after acceptance and merge; this worker relinquishes `lib/services/invoices.ts` editing.
 Coordinator acceptance / merge SHA: Pending.
 Proposed central updates (coordinator-owned, not edited here): mark T06 REVIEW in the graph/dashboard, add a T06 acceptance record on merge, and — per the coordinator's explicit instruction in this session — the review walkthrough is being added at `agent_explanations/T06.md` (not a graph-owned path, following the accepted precedent of `agent_explanations/T03.md` and `T04.md`).
