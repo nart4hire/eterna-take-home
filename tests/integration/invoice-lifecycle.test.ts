@@ -113,10 +113,19 @@ const summaryKeys = ["createdAt", "customerName", "dueDate", "id", "invoiceNumbe
 const itemKeys = ["id", "lineTotal", "position", "productId", "productName", "quantity", "unitPrice"];
 
 /**
- * T06 ruling 5: an illegal or repeated transition reuses the item-edit conflict contract — 409 with
- * the same code and message `replaceInvoiceItems` uses for a non-draft invoice.
+ * T06 ruling 5 plus the coordinator ruling of 2026-09-18 on T07: an illegal or repeated transition
+ * keeps the item-edit conflict code (409 `INVOICE_NOT_EDITABLE`) with a transition-specific message.
  */
-const TRANSITION_CONFLICT = { code: "INVOICE_NOT_EDITABLE", message: "Only draft invoices can have their items replaced" };
+const transitionConflict = (from: InvoiceStatus, to: InvoiceStatus) => ({
+  code: "INVOICE_NOT_EDITABLE",
+  message: `Invoice status cannot change from ${from} to ${to}`,
+});
+
+/**
+ * The 409 codes a losing racer can observe: a stale version, a retried attempt that now sees the new
+ * state (the item-edit path checks state before version), or retry exhaustion.
+ */
+const LOSER_CONFLICT_CODES = ["VERSION_CONFLICT", "INVOICE_NOT_EDITABLE", "TRANSACTION_CONFLICT"] as const;
 
 /** The four legal transitions and the eight illegal ones of the 4x3 matrix. */
 const LEGAL: [InvoiceStatus, InvoiceStatus][] = [
@@ -167,7 +176,7 @@ describe("V8: transition matrix, terminal states and repeats", () => {
 
       const response = await transition(owner.cookie, start.id, { version: start.version, status: to });
       expect(response.status, `${from} -> ${to}`).toBe(409);
-      expect(await errorOf(response), `${from} -> ${to}`).toEqual(TRANSITION_CONFLICT);
+      expect(await errorOf(response), `${from} -> ${to}`).toEqual(transitionConflict(from, to));
 
       const after = await invoiceState(start.id);
       expect(after.status, `${from} -> ${to}`).toBe(from);
@@ -224,7 +233,7 @@ describe("V6: issue deducts every line exactly once and rolls back atomically", 
 
     const repeated = await transition(owner.cookie, issued.id, { version: issued.version, status: "ISSUED" });
     expect(repeated.status).toBe(409);
-    expect(await errorOf(repeated)).toEqual(TRANSITION_CONFLICT);
+    expect(await errorOf(repeated)).toEqual(transitionConflict("ISSUED", "ISSUED"));
     expect(await productState(product!.id)).toEqual(stockAfterIssue);
     expect(await invoiceState(issued.id)).toMatchObject({ status: "ISSUED", version: 1 });
   });
@@ -324,11 +333,11 @@ describe("V7: cancellation restores issued stock exactly once", () => {
 
     const staleRepeat = await transition(owner.cookie, cancelled.id, { version: issued.version, status: "CANCELLED" });
     expect(staleRepeat.status).toBe(409);
-    expect(await errorOf(staleRepeat)).toEqual(TRANSITION_CONFLICT);
+    expect(await errorOf(staleRepeat)).toEqual(transitionConflict("CANCELLED", "CANCELLED"));
 
     const currentRepeat = await transition(owner.cookie, cancelled.id, { version: cancelled.version, status: "CANCELLED" });
     expect(currentRepeat.status).toBe(409);
-    expect(await errorOf(currentRepeat)).toEqual(TRANSITION_CONFLICT);
+    expect(await errorOf(currentRepeat)).toEqual(transitionConflict("CANCELLED", "CANCELLED"));
 
     expect(await productState(product!.id)).toEqual(restored);
     expect(await invoiceState(cancelled.id)).toMatchObject({ status: "CANCELLED", version: 2 });
@@ -555,7 +564,7 @@ describe("concurrency: the lifecycle races on real PostgreSQL", () => {
     expect([left.status, right.status].sort((a, b) => a - b)).toEqual([200, 409]);
     // The loser can observe the winner's version bump or its new status, so only the 409 class is pinned.
     const loser = left.status === 409 ? left : right;
-    expect(["VERSION_CONFLICT", "INVOICE_NOT_EDITABLE", "TRANSACTION_CONFLICT"]).toContain((await errorOf(loser)).code);
+    expect(LOSER_CONFLICT_CODES).toContain((await errorOf(loser)).code);
 
     expect(await productState(product!.id)).toEqual({ quantityOnHand: 10, version: 2, deletedAt: null });
     expect(await invoiceState(issued.id)).toMatchObject({ status: "CANCELLED", version: 2 });
@@ -578,7 +587,7 @@ describe("concurrency: the lifecycle races on real PostgreSQL", () => {
       expect(stored).toMatchObject({ status: "ISSUED", version: 1 });
       expect(stored.items).toHaveLength(1);
       expect(stored.items[0]).toMatchObject({ productId: product!.id, quantity: 4 });
-      expect((await errorOf(edit)).code).toBe("VERSION_CONFLICT");
+      expect(LOSER_CONFLICT_CODES).toContain((await errorOf(edit)).code);
       expect(await productState(product!.id)).toEqual({ quantityOnHand: 6, version: 1, deletedAt: null });
       expect(await productState(replacement!.id)).toEqual({ quantityOnHand: 10, version: 0, deletedAt: null });
     } else {
