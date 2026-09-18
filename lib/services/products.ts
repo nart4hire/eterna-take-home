@@ -43,13 +43,20 @@ const toProductDto = (row: ProductRow): ProductDto => ({
 const isSkuCollision = (error: unknown): boolean =>
   error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002";
 
+/**
+ * `contains` compiles to an ILIKE pattern, so `%` and `_` would stay wildcards and a lone `%`
+ * would match every row. Escape them (and the escape character itself) to keep search literal.
+ */
+const escapeLikePattern = (value: string): string => value.replace(/[\\%_]/g, (character) => `\\${character}`);
+
 export async function listProducts(userId: string, query: ProductListInput): Promise<Page<ProductDto>> {
+  const search = escapeLikePattern(query.search);
   const where: Prisma.ProductWhereInput = {
     userId,
     deletedAt: null,
-    ...(query.search ? { OR: [
-      { name: { contains: query.search, mode: "insensitive" } },
-      { sku: { contains: query.search, mode: "insensitive" } },
+    ...(search ? { OR: [
+      { name: { contains: search, mode: "insensitive" } },
+      { sku: { contains: search, mode: "insensitive" } },
     ] } : {}),
   };
   const [rows, total] = await Promise.all([
