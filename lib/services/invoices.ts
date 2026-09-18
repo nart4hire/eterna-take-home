@@ -7,7 +7,7 @@ import { calculateTotals } from "@/lib/money";
 import { getPrisma } from "@/lib/prisma";
 import { withSerializableRetry } from "@/lib/services/transaction";
 import type { InvoiceDetailDto, InvoiceItemDto, InvoiceStatus, InvoiceSummaryDto, Page } from "@/lib/types";
-import type { CreateInvoiceInput, InvoiceLineInput, InvoiceListInput, ReplaceInvoiceItemsInput } from "@/lib/validation/schemas";
+import type { CreateInvoiceInput, InvoiceLineInput, InvoiceListInput, ReplaceInvoiceItemsInput, TransitionInvoiceInput } from "@/lib/validation/schemas";
 
 /** Columns that may leave the service: never userId. */
 type InvoiceRow = {
@@ -206,6 +206,112 @@ export async function replaceInvoiceItems(userId: string, id: string, input: Rep
     // Whole-set replacement inside one transaction: a failed insert rolls the delete back too.
     await tx.invoiceItem.deleteMany({ where: { invoiceId: id } });
     await tx.invoiceItem.createMany({ data: snapshots.map((snapshot) => ({ invoiceId: id, ...snapshot })) });
+    const updated = await tx.invoice.findUniqueOrThrow({ where: { id }, include: ITEMS_ASCENDING });
+    return toDetailDto(updated);
+  });
+}
+
+/** The legal edges of the lifecycle; every other pair is a state conflict. */
+const LEGAL_TRANSITIONS: Record<InvoiceStatus, readonly InvoiceStatus[]> = {
+  DRAFT: ["ISSUED", "CANCELLED"],
+  ISSUED: ["PAID", "CANCELLED"],
+  PAID: [],
+  CANCELLED: [],
+};
+
+/** Matches the migration CHECK `quantityOnHand BETWEEN 0 AND 1000000` and the products schema bound. */
+const MAX_STOCK = 1000000;
+
+/** Item-edit conflict code with a transition-specific message (coordinator ruling on T06 item 5). */
+const transitionConflict = (from: InvoiceStatus, to: InvoiceStatus): AppError =>
+  new AppError(409, "INVOICE_NOT_EDITABLE", `Invoice status cannot change from ${from} to ${to}`);
+
+/**
+ * A restore that would exceed the stock bound is a conflict rather than a constraint violation, so the
+ * caller can roll the whole cancellation back and report why. There is no client field to correct, so
+ * the 409 carries a message only (the manual stock write has to be lowered first).
+ */
+const stockOverflow = (name: string, available: number): AppError =>
+  new AppError(409, "STOCK_OVERFLOW", `Restoring the ${name} line would push its stock above the maximum (${available} on hand)`);
+
+/** Deterministic lock order: concurrent issues queue on the same products in the same sequence. */
+const sortByProduct = (items: readonly ItemRow[]): ItemRow[] =>
+  [...items].sort((left, right) => (left.productId < right.productId ? -1 : left.productId > right.productId ? 1 : 0));
+
+/**
+ * Legal transitions only: DRAFT -> ISSUED | CANCELLED and ISSUED -> PAID | CANCELLED. PAID and
+ * CANCELLED are terminal, so a repeated or illegal action is a 409 and never repeats a stock effect.
+ */
+export function assertTransition(from: InvoiceStatus, to: InvoiceStatus): void {
+  if (!LEGAL_TRANSITIONS[from].includes(to)) throw transitionConflict(from, to);
+}
+
+/**
+ * Deducts every line at issue with an owner/active/quantity-gte conditional update. The guard is the
+ * race-safe claim: a concurrent issue that already consumed the stock leaves `count` at zero. Sorted
+ * writes plus "throw on any failed update" make all lines commit or none.
+ */
+async function deductStock(tx: Prisma.TransactionClient, userId: string, items: readonly ItemRow[]): Promise<void> {
+  for (const item of sortByProduct(items)) {
+    const { count } = await tx.product.updateMany({
+      where: { id: item.productId, userId, deletedAt: null, quantityOnHand: { gte: item.quantity } },
+      data: { quantityOnHand: { decrement: item.quantity }, version: { increment: 1 } },
+    });
+    if (count === 0) {
+      // The failed guard is the evidence; the re-read only names the product and its current stock.
+      const product = await tx.product.findFirst({
+        where: { id: item.productId, userId },
+        select: { name: true, quantityOnHand: true, deletedAt: true },
+      });
+      if (!product || product.deletedAt) throw productNotFound(item.position);
+      throw insufficientStock(item.position, product.quantityOnHand, product.name);
+    }
+  }
+}
+
+/**
+ * Restores every line of an issued invoice once, including lines whose product was soft-deleted after
+ * the issue. The `lte` guard turns an overflowing restore into an explicit 409 that rolls the whole
+ * cancellation back, and `userId` keeps the write inside the invoice owner's products.
+ */
+async function restoreStock(tx: Prisma.TransactionClient, userId: string, items: readonly ItemRow[]): Promise<void> {
+  for (const item of sortByProduct(items)) {
+    const { count } = await tx.product.updateMany({
+      where: { id: item.productId, userId, quantityOnHand: { lte: MAX_STOCK - item.quantity } },
+      data: { quantityOnHand: { increment: item.quantity }, version: { increment: 1 } },
+    });
+    if (count === 0) {
+      const product = await tx.product.findUniqueOrThrow({
+        where: { id: item.productId },
+        select: { name: true, quantityOnHand: true },
+      });
+      throw stockOverflow(product.name, product.quantityOnHand);
+    }
+  }
+}
+
+/**
+ * Version-guarded lifecycle transition. Existence, state and version are checked before anything is
+ * written, the conditional status claim is the race-safe step, and the stock effect commits or rolls
+ * back with it — so a failed line leaves neither a deduction nor a new status. Serializable retries
+ * cover concurrent issues and cancellations, and each stock change increments the product version.
+ */
+export async function transitionInvoice(userId: string, id: string, input: TransitionInvoiceInput): Promise<InvoiceDetailDto> {
+  return withSerializableRetry(async (tx) => {
+    const invoice = await tx.invoice.findFirst({ where: { id, userId }, include: ITEMS_ASCENDING });
+    if (!invoice) throw notFound();
+    assertTransition(invoice.status, input.status);
+    if (invoice.version !== input.version) throw versionConflict();
+
+    const { count } = await tx.invoice.updateMany({
+      where: { id, userId, status: invoice.status, version: input.version },
+      data: { status: input.status, version: { increment: 1 } },
+    });
+    if (count === 0) throw versionConflict();
+
+    if (invoice.status === "DRAFT" && input.status === "ISSUED") await deductStock(tx, userId, invoice.items);
+    if (invoice.status === "ISSUED" && input.status === "CANCELLED") await restoreStock(tx, userId, invoice.items);
+
     const updated = await tx.invoice.findUniqueOrThrow({ where: { id }, include: ITEMS_ASCENDING });
     return toDetailDto(updated);
   });
