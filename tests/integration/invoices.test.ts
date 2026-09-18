@@ -522,7 +522,7 @@ describe("V9: draft-only item editing with version guarding and atomic replaceme
       const fixture = await createInvoiceFixture(owner.user.id, [{ product: product!, quantity: 1 }], { status });
       const response = await replace(owner.cookie, fixture.id, { version: 0, items: [line(product!, 2)] });
       expect(response.status, status).toBe(409);
-      expect((await readErrorBody(response)).error, status).toEqual({ error: { code: "INVOICE_NOT_EDITABLE", message: "Only draft invoices can have their items replaced" } });
+      expect((await readErrorBody(response)).error, status).toEqual({ code: "INVOICE_NOT_EDITABLE", message: "Only draft invoices can have their items replaced" });
       const stored = await getPrisma().invoice.findUniqueOrThrow({ where: { id: fixture.id }, include: { items: true } });
       expect(stored).toMatchObject({ status, version: 0, subtotal: 1000, taxAmount: 110, total: 1110 });
       expect(stored.items[0]).toMatchObject({ quantity: 1, lineTotal: 1000 });
