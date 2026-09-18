@@ -1,11 +1,38 @@
+import type { z } from "zod";
+import { requireAuth } from "@/lib/auth/session";
+import { assertSameOrigin, dataResponse, handleRoute, readJson } from "@/lib/http";
+import { createProduct, listProducts } from "@/lib/services/products";
+import type { Page, ProductDto } from "@/lib/types";
+import { createProductSchema, productListSchema } from "@/lib/validation/schemas";
+
 export const runtime = "nodejs";
 
-/** Temporary T05 red-stage skeleton: answers every method with 501 until the real handlers land. */
-const notImplemented = (operation: string): Response =>
-  new Response(JSON.stringify({ error: { code: "NOT_IMPLEMENTED", message: `${operation} is not implemented yet` } }), {
-    status: 501,
-    headers: { "content-type": "application/json" },
-  });
+/** List responses use the documented Page envelope directly: { data, pagination }. */
+const pageResponse = (result: Page<ProductDto>): Response =>
+  Response.json(result, { status: 200, headers: { "cache-control": "no-store" } });
 
-export async function GET(request: Request): Promise<Response> { return notImplemented(`GET ${new URL(request.url).pathname}`); }
-export async function POST(request: Request): Promise<Response> { return notImplemented(`POST ${new URL(request.url).pathname}`); }
+/** Query strings are validated by the same strict schema as bodies, so unknown keys are 422. */
+function readQuery<T>(request: Request, schema: z.ZodType<T>): T {
+  const result = schema.safeParse(Object.fromEntries(new URL(request.url).searchParams));
+  if (!result.success) throw result.error;
+  return result.data;
+}
+
+/** GET /api/products -> paginated owner-scoped products with case-insensitive name/SKU search. */
+export function GET(request: Request): Promise<Response> {
+  return handleRoute(async () => {
+    const user = await requireAuth(request.headers);
+    const query = readQuery(request, productListSchema);
+    return pageResponse(await listProducts(user.id, query));
+  });
+}
+
+/** POST /api/products -> 201 created product; a taken SKU is a 409 field error. */
+export function POST(request: Request): Promise<Response> {
+  return handleRoute(async () => {
+    const user = await requireAuth(request.headers);
+    assertSameOrigin(request);
+    const input = await readJson(request, createProductSchema);
+    return dataResponse(await createProduct(user.id, input), 201);
+  });
+}
