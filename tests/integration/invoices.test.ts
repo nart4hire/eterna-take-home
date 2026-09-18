@@ -365,6 +365,19 @@ describe("V2: exact integer-cent totals and rejected client arithmetic", () => {
 
     expect(await getPrisma().invoice.count()).toBe(0);
   });
+  it("rejects overflow from a retained snapshot when a draft line is edited upward", async () => {
+    const owner = await registerAndLogin();
+    const maxed = await createProductFixture(owner.user.id, { sku: "MAX-2", unitPrice: 2147483647, quantityOnHand: 5 });
+    const draft = await createInvoiceFixture(owner.user.id, [{ product: maxed, quantity: 1 }], { taxRateBps: 0 });
+
+    const grown = await replace(owner.cookie, draft.id, { version: draft.version, items: [line(maxed, 2)] });
+    expect(grown.status).toBe(422);
+    expect((await readErrorBody(grown)).error.code).toBe("ARITHMETIC_BOUNDS");
+
+    const stored = await getPrisma().invoice.findUniqueOrThrow({ where: { id: draft.id }, include: { items: true } });
+    expect(stored).toMatchObject({ version: 0, subtotal: 2147483647, taxAmount: 0, total: 2147483647 });
+    expect(stored.items[0]).toMatchObject({ unitPrice: 2147483647, quantity: 1, lineTotal: 2147483647 });
+  });
 });
 
 describe("V3: the configured tax rate is stored and reused", () => {
