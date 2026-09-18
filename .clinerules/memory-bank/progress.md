@@ -1,5 +1,45 @@
 # Progress
 
+## T10 accepted — Swagger, release verification, tech spec and the 36-ID ledger (2026-09-18)
+
+T10 was accepted and merged on 2026-09-18 (approved tip `08bf6f8`, tested code `a28fe3c`, tested merge
+`90bc26065526d05a596c4747e305baf545631705`, `--no-ff` over base `6f2af0e`, no conflicts; the merged tree
+is byte-identical to the branch tip, so the merged content IS the tested revision, and both task refs
+stay at `08bf6f8`). Full evidence lives in `acceptance_records.T10` in the graph.
+
+T10 delivers the OpenAPI 3.1 document (`lib/openapi.ts`, generated from the same Zod schemas the
+handlers validate with), the uncached same-origin `GET /api/openapi.json` route and the standalone
+`/docs` Swagger viewer rendered from the locally installed `swagger-ui-dist` package outside the
+`(dashboard)` shell — unlinked from the client application, as AMEND-T08-1 requires — plus
+`tests/unit/documentation.test.ts` (11 cases) which pins handler parity, Zod-derived request/query
+schemas, per-operation status and error-code tables, the cookie security scheme and that separation.
+It also adds `tech_spec.md` (every `project.md` requirement mapped to its implementation and tests,
+built by independent discovery and then cross-checked against the plan, graph and cards),
+`docs/requirements.md` (the 36-ID evidence ledger with responsible task, actual test or checklist row,
+result and gaps), `docs/discrepancies.md` (D1–D12 with severity and disposition), the marked
+submission checklist in `project.md`, and the rewritten README (its final pass reserved for the
+human author).
+
+Merged-revision verification in the coordinator checkout at `90bc260`: `pnpm test` unit 91/91
+(9 files) and integration 136/136 (6 files) on real PostgreSQL under the `postgres-test` lease
+(227 tests), `pnpm lint` 0, `pnpm typecheck` 0, `pnpm build` 0 with `ƒ /api/openapi.json` and
+`○ /docs` beside the five API route families. Three fresh-clone rehearsals: A (documented local
+workflow) found the release-blocking defect **D11** — `pnpm db:seed` died with `Cannot find module
+'@/generated/prisma/client'` and `pnpm dev` answered HTTP 500 on `/login` because nothing generated
+the git-ignored Prisma client — fixed in `a28fe3c` (`dev`, `db:migrate` and `db:seed` now run
+`prisma generate` first) and pinned by harness test `T00-H27` (red `469f7eb`); B re-ran the whole
+workflow from a second fresh clone (seed twice, `pnpm dev`, demo login, session, seeded products);
+C built and ran `docker compose up --build` from a third fresh clone under its own Compose project
+(bundled postgres on host port 5442, shared dev database untouched) and used the app at
+`http://localhost:3000`. D11 is also recorded in the graph's `post_acceptance_fixes`, since the fix
+touches T00-owned paths.
+
+Limitations recorded rather than claimed: Swagger UI rendering in a browser stays a reviewer-checklist
+row (AMEND-T04-1 removed the browser suite), the loading/error boundaries stay *not exercisable*, the
+README hour line is the author's, and T09's O14 (unknown/malformed/foreign invoice ids answer the RSC
+not-found UI with HTTP 200 while an unmatched route is a real 404, with no data leak) is documented as
+D12. All eleven tasks T00–T10 are now DONE; only the human README pass remains.
+
 ## T09 accepted — invoices UI, the browser-found form fix and the small-fix pass (2026-09-18)
 
 T09 was accepted and merged on 2026-09-18 (approved tip `b9c372cff2eec15a7d9d09820b23f4bff528b59b`, tested code `b3593a6`, the browser-found rework `413151f`, tested merge `b22d2cb19ce8d46ffc02168770839ab788334d8c`, `--no-ff` over base `7bd5f68`, no conflicts; the merge tree `f0dd29c933c87b304e32e7a71c93dd3c6c1bd589` is byte-identical to the branch tree, so the merged content IS the tested revision, and both task refs stayed at `b9c372c`). Full evidence lives in `acceptance_records.T09` in the graph.

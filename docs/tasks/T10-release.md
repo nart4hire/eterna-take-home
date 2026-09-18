@@ -1,6 +1,6 @@
 # T10 — Swagger and release verification
 
-Status: IN_PROGRESS — all deliverables complete and verified at the release revision; coordinator acceptance pending
+Status: DONE — accepted and merged by the coordinator at `90bc260`; only the human README pass remains
 Owner: T10 worker (Cline), dispatched by the user 2026-09-18
 Depends on: T08 (accepted), T09 (accepted and merged)
 Requirement IDs: N1, N2, N3, N4, N5, N6, N7
@@ -159,8 +159,32 @@ with the approved tip and tested merge SHA; a `post_acceptance_fixes`-style entr
 T00-owned paths; memory-bank updates naming T10 as the last remaining task and the README's reserved
 human pass.
 
-Next action: coordinator merge of this branch into `main`, verification on the merged revision,
-`origin/main` push, and the central documentation/memory-bank update marking T10 DONE. The only work
-left after that is the human README pass.
+Next action: none for the worker role. The only remaining work is the human README pass.
+
+## Coordinator acceptance (2026-09-18)
+
+Accepted and merged. Approved tip `08bf6f8` (local and origin agree) with tested code `a28fe3c` — the
+last executable change; every later commit on the branch is documentation. Coordinator merge:
+`git merge --no-ff 08bf6f8` into base `6f2af0e` (T09 accepted at `b22d2cb`) produced
+`90bc26065526d05a596c4747e305baf545631705` with no conflicts, and `git diff --stat` between the merge
+and the branch tip is empty, so the merged tree IS the tested tree; both task refs remain frozen at
+`08bf6f8`.
+
+Verified on the merged revision `90bc260` in the coordinator checkout: `pnpm test` unit **91/91**
+(9 files) and integration **136/136** (6 files) = 227 tests on real PostgreSQL under the `postgres-test`
+lease, `pnpm lint` 0, `pnpm typecheck` 0, `pnpm build` 0 with `ƒ /api/openapi.json` and `○ /docs`.
+Independently reviewed before acceptance: the specification against every handler, the viewer's
+separation from the client application, the ledger's per-ID evidence against the actual test titles,
+`tech_spec.md` and `docs/discrepancies.md` against the code they cite, and the rehearsal logs.
+
+Recorded limitations (not claims): Swagger UI rendering stays a reviewer-checklist row; the
+loading/error boundaries stay *not exercisable*; the README hour line and optional endpoint table are
+the author's; T09's O14 is recorded as `docs/discrepancies.md` D12. The D11 fresh-clone fix is also
+recorded in the graph's `post_acceptance_fixes`, because it touches T00-owned paths
+(`package.json`, `tests/unit/test-harness.test.ts`).
+
+Coordinator acceptance / merge SHA: `90bc26065526d05a596c4747e305baf545631705` (published on
+`origin/main`); retained branch `task/T10-release` at `08bf6f8`; central records updated (graph
+`acceptance_records.T10`, `docs/execution/dependency-tree.md`, memory bank, and this card).
 
 
