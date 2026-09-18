@@ -5,8 +5,12 @@ are DONE: implemented, accepted, merged and re-verified, with per-task tips and 
 `acceptance_records`. **T04 is closed**: accepted and merged at `e30b194` (approved tip `e22cefc`, tested
 code `f9f3bb9`), its card header now reads DONE, and its four open review questions — including the
 committed `.mcp.json` and the `next-dev` lease — were ruled on by the T04-resolution commit recorded in
-the graph's `post_acceptance_fixes`. **T07 (invoice lifecycle) is accepted and merged at `38d230f`** (approved tip `183d900`, tested code `ce9c2ab`) and **T08 (products UI) is accepted and merged at `15d17a7`** (approved tip `10e1f2e`, tested code `c0ff16f` plus the user-directed rework `83fce4d`), so T09 (invoices UI) is the only remaining implementation task — eligible behind T04 + T07 — and T10 waits on T09 alone. Dated "Next:" or
+the graph's `post_acceptance_fixes`. **T07 (invoice lifecycle) is accepted and merged at `38d230f`** (approved tip `183d900`, tested code `ce9c2ab`) and **T08 (products UI) is accepted and merged at `15d17a7`** (approved tip `10e1f2e`, tested code `c0ff16f` plus the user-directed rework `83fce4d`), and **T09 (invoices UI) is accepted and merged at `b22d2cb`** (approved tip `b9c372c`, tested code `b3593a6`, including the browser-found nested-form fix `413151f` and the O1/O2/O3/O10 small-fix pass), so T10 (OpenAPI spec plus standalone viewer, README, container rehearsal and the 36-ID evidence ledger) is the only remaining task. Dated "Next:" or
 "Pending" paragraphs further down are the record of the moment they were written, not the current state.
+
+## T09 accepted and merged (coordinator, 2026-09-18)
+
+T09 (invoices UI) was accepted and merged at `b22d2cb19ce8d46ffc02168770839ab788334d8c` over base `7bd5f68` with `--no-ff` and no conflicts, from approved tip `b9c372c` (local and origin agree) and tested code `b3593a6`; the merge tree is byte-identical to the branch tree, so the merged content IS the tested revision. Evidence: `acceptance_records.T09` in the graph and the review/rework sections on the T09 card. The review produced two rework rounds — `413151f`, after the user's browser pass found a nested `<form>` hydration error on `/invoices/new` (fixed and pinned by one-form-per-screen matrix checks), and `b3593a6`, which cleared O1/O2/O3/O10 — and the reviewer's own live matrix finished 45/45 on the merged revision in the coordinator checkout, after unit 79/79, integration 136/136 on real PostgreSQL under the `postgres-test` lease and lint/typecheck/build 0. T10 (Swagger, README, container rehearsal, 36-ID ledger) is now the only remaining task and is eligible behind the accepted T08 + T09 merges; `task/T09-invoices-ui` stays frozen at `b9c372c`.
 
 ## T08 accepted and merged (coordinator, 2026-09-18)
 

@@ -1,6 +1,6 @@
 # T09 — Invoices UI
 
-Status: IN_PROGRESS
+Status: DONE — accepted and merged at `b22d2cb` (approved tip `b9c372c`, tested code `b3593a6`)
 Owner: T09 worker (single agent, 2026-09-18)
 Depends on: T04, T07
 Requirement IDs: F3, F4, F5, F6
@@ -226,4 +226,4 @@ contains "Draft version" (O2), and an empty `?status=` normalises to the canonic
 button cannot be exercised without a browser, so they rest on the source semantics above plus lint/typecheck/build
 and remain browser rows. O4 therefore stays open as a coverage disclosure, and O5–O9, O11–O12 remain recorded
 notes; O13 is fixed in `413151f` and O14 is recorded for T10.
-Coordinator acceptance / merge SHA: Pending.
+Coordinator acceptance / merge SHA: accepted and merged at `b22d2cb19ce8d46ffc02168770839ab788334d8c` over base `7bd5f68` (`--no-ff`, no conflicts, merge tree byte-identical to the branch tree) from approved tip `b9c372c` and tested code `b3593a6`. The branch is frozen at `b9c372c`; later fixes require a newly authorized rework branch.
