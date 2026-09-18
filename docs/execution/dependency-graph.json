@@ -58,7 +58,7 @@
         "Container work is authorized for T04 and, where necessary, T08/T09: a simple Dockerfile, a .dockerignore and an app service in docker-compose.yml. The image must use the mise.toml pins (Node 24.21.0, pnpm 12.4.2) and must make 'clone -> populate env where necessary -> docker compose up' sufficient on a fresh clone, migrations and the idempotent demo seed included.",
         "The 'E2E deferred' wording in the T00-T03 acceptance records and in the frozen T00/T01/T03 cards stays as the historical record of the state at acceptance time; this amendment supersedes it going forward."
       ],
-      "ownership_note": "Dockerfile and .dockerignore were added to T04's owns. docker-compose.yml stays listed under T00 because T00 authored it, so T04/T08/T09 act as authorized editors of the container files rather than new owners and no unordered ownership overlap is introduced.",
+      "ownership_note": "Dockerfile, .dockerignore and docker/** (the container entrypoint) were added to T04's owns. docker-compose.yml stays listed under T00 because T00 authored it, so T04/T08/T09 act as authorized editors of the container files rather than new owners and no unordered ownership overlap is introduced.",
       "evidence": "T04 card: requirement amendment block, reviewer verification checklist, deliverables row and validation bullets, plus the implementation commits that follow on task/T04-ui-foundation (Playwright removal gates and the fresh-clone compose rehearsal)."
     }
   ],
@@ -169,6 +169,7 @@
         "/home/areion/projects/eterna-take-home/app/(dashboard)/error.tsx",
         "/home/areion/projects/eterna-take-home/Dockerfile",
         "/home/areion/projects/eterna-take-home/.dockerignore",
+        "/home/areion/projects/eterna-take-home/docker/**",
         "/home/areion/projects/eterna-take-home/tests/unit/client-api.test.ts"
       ], "locks": ["postgres-test"]
     },
