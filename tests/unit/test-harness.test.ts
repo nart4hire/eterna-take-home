@@ -277,3 +277,15 @@ describe("HARNESS FIX: every local gate generates the Prisma client itself", () 
   });
 });
 
+describe("HARNESS FIX: DB-backed children get a deterministic test environment", () => {
+  it("T00-H26 the runner pins TAX_RATE_BPS for its children instead of inheriting .env", () => {
+    // Invoice suites assert exact cents derived from the tax rate, so a developer's .env (or its
+    // absence) must not change them: the runner assigns its own value after loading .env, exactly
+    // like DATABASE_URL, BETTER_AUTH_URL and NODE_ENV.
+    const runner = readFileSync(path.join(WT_ROOT, "scripts/test.ts"), "utf8");
+    const injected = /Object\.assign\(env,\s*\{([\s\S]*?)\n  \}\);/.exec(runner);
+    expect(injected, "injected child environment not found in scripts/test.ts").not.toBeNull();
+    expect(injected![1]).toMatch(/TAX_RATE_BPS:\s*"1100"/);
+  });
+});
+
