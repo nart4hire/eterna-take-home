@@ -10,7 +10,9 @@ Built with Next.js 16 (App Router), TypeScript, Tailwind v4, Prisma 7 with Postg
 requirement-to-evidence ledger is `docs/requirements.md`, and the task cards under `docs/tasks/`
 record how the work was sequenced and verified.
 
-## Quick start (containers)
+## Running/Deployment
+
+### Quick start (containers)
 
 Needs Docker and a populated `.env`.
 
@@ -24,7 +26,7 @@ The `app` service builds the production bundle, runs `prisma migrate deploy`, ap
 demo seed and serves on <http://localhost:3000>. Register your own account, or sign in with the demo
 credentials below. Stop with `docker compose down`; add `-v` to drop the database volume too.
 
-## Local development
+### Local development
 
 ```bash
 pnpm install --frozen-lockfile
@@ -37,7 +39,7 @@ pnpm dev          # http://localhost:3000 — one process serves the pages and t
 `generated/prisma` is a build artifact and is not committed: `dev`, `build`, `typecheck` and both test
 subsets generate the Prisma client on demand, so a clean checkout needs no manual generate step.
 
-## Environment
+### Environment
 
 `.env` is git-ignored; `.env.example` is tracked and contains local-only placeholders.
 
@@ -52,7 +54,7 @@ subsets generate the Prisma client on demand, so a clean checkout needs no manua
 | `TAX_RATE_BPS` | Default tax rate in basis points, `0`–`10000`; snapshotted on each new invoice | `1100` (11 %) |
 | `NODE_ENV` | Standard Next.js mode | `development` |
 
-## Demo credentials
+### Demo credentials
 
 | Email | Password |
 |---|---|
@@ -62,7 +64,9 @@ The seed also creates five products (`DEMO-001` … `DEMO-005`) so invoice scree
 pick from. It only creates what is missing: edited prices, stock levels and soft deletions survive a
 rerun. The seed refuses to run with `NODE_ENV=production`.
 
-## API documentation
+## Further Details
+
+### API documentation
 
 - **Specification (machine-readable):** `GET /api/openapi.json` — OpenAPI 3.1, built from the same
   Zod schemas the route handlers validate with, and served by the application itself.
@@ -76,7 +80,7 @@ rerun. The seed refuses to run with `NODE_ENV=production`.
   requirements, and does the client stay free of documentation links). Rendering the viewer is a
   manual reviewer-checklist item, because the project has no browser test suite by design.
 
-## Tests
+### Tests
 
 ```bash
 pnpm test             # both suites
@@ -93,7 +97,7 @@ development database, and does not tear the shared Compose services down. There 
 UI behaviour is verified with the manual checklist in the task cards, and API behaviour with the
 real-PostgreSQL integration suites.
 
-## Behaviour worth knowing
+### Behaviour worth knowing (From the project specification or inferred)
 
 - **Money** is integer cents everywhere, displayed as USD. There is no currency selection, and the
   API rejects client-computed prices or totals: `TAX_RATE_BPS` is snapshotted on each invoice and tax
@@ -113,51 +117,33 @@ real-PostgreSQL integration suites.
 
 ## Tech choices
 
-- **Next.js App Router route handlers as the only backend.** Pages and API live in one deployable,
-  which keeps the take-home small: no separate server, no CORS, no client-side data layer.
-- **Prisma 7 + PostgreSQL** for real constraints (money, stock and version checks in the schema),
-  serializable transactions for the stock effects, and migrations that are part of the repository.
-- **Zod schemas shared by routes and forms.** One definition drives request validation, the query
-  parsing and the published OpenAPI request bodies, so the documentation cannot drift from what the
-  handlers accept.
-- **BetterAuth with bcryptjs (cost 12)** for database-backed sessions: revocation and expiry take
-  effect on the next request, and copied cookies stop working immediately after logout.
-- **Integer cents end to end.** Prices are parsed digit-by-digit in the UI and stored as integers, so
-  no float ever touches money or tax rounding.
-- **Optimistic concurrency over locks.** A `version` guard on products and invoices is small, testable
-  and enough for the overselling problem this app exists to solve.
-- **Server-rendered pages with small client forms.** Validation, empty and error states live on the
-  server where the data is, and only the interactive forms are client components.
-- **Deliberately thin client helper** (`lib/client-api.ts`) instead of a data-fetching library: one
-  typed fetch wrapper that maps API errors to form field errors.
-- **Real-PostgreSQL integration tests** with an isolated Compose database, because atomicity and
-  ownership claims cannot be proven with mocks alone.
-- **Swagger UI from the installed package, not a CDN**, so the documentation surface works offline
-  and never depends on a third party being reachable.
+Keeping in mind the goal of this take home, and that is to demonstrate skills required to be able to jump right in to a development team and easily pick up a project and colaborate with peers, I chose the following 
 
+- **Next.js** I chose this since this is what was posted on the job description. I figured it fitting for both demonstration and fulfilling spec requirements/
 
-## Trade-offs and deliberate scope cuts
+- **Prisma 7 + PostgreSQL** I chose this since I am most comfortable with this type of workflow.
 
-- The UI is **not test-driven**: the browser suite was removed on purpose, so screen behaviour is
-  verified by manual checklists in the task cards while automated coverage stays on the unit,
-  integration and documentation suites.
-- Single currency with a fixed two-decimal scale; no multi-currency, no currency selection.
-- No roles or teams: every user has an independent workspace, and there is no admin view.
-- No stock ledger, no back-orders and no partial fulfilment — stock is a single integer per product.
-- No password reset, email verification or OAuth; the demo seed exists so the app is usable at once.
-- Invoice metadata cannot be edited after creation, and invoices are never deleted, only cancelled.
-- Search is a literal case-insensitive substring match (wildcards are escaped), not a fuzzy search.
+- **Zod schemas shared by routes and forms.** Same as the above, zod just makes it easier to keep track.
+
+- **BetterAuth with bcryptjs (cost 12)** I chose BetterAuth, compared to the standard NextAuth as I believe BetterAuth to be more mature and aligned with industry standard. It also integrates Ok with bcryptjs.
+
+- **Swagger UI, from the installed package** So the documentation surface works offline, also easy to hand off to agents to do.
+
+- **Hybrid TDD, backend with full TDD, and frontend with semi-manual verification** I figured this was the industry standard on how AI pair programming was conducted and I wanted to implement such within this repo. I also made sure to make a dependency graph so that I could leverage parallel agents to implement features faster if the features weren't dependent on each other.
+
+> ![DAG](./eterna.png)
+
+This way, I also had a clear structure and goal that I could work towards with clear deliverables.
+
+The above choices aside, I felt it was also prudent to mention my shortcomings in hindsight.
+1. I felt the planning phase went well at first, but when I got into the project, it definitely ballooned into something much bigger than anticipated. As such, I feel like I didn't design the scope well enough for this project. Since this is a small project, the scope should have been kept smaller to fit with the theme and allow more hands on programming to demonstrate my coding skills. What ended up happening was that there were a lot of tests (which is not bad per se, just not fitting for this project) and each task became more agentic + code reviewer than I'd hoped for.
+2. I didn't leverage MCPs and Skills as much as I'd liked. Since not having much experience working with cursor-like workflows, I spent quite a bit of time tinkering here and there to get a decent setup which cost me a lot of time. I should have spent more time during the planning phase to set up skills and MCP servers so that the agents could have an easier time getting to the goal.
 
 ## With another week
 
-- A stock ledger per product, so historic movements can be audited instead of only the current count.
-- Metadata editing for drafts, plus an activity feed per invoice (who issued, paid or cancelled it).
-- Customer records, so `customerName` becomes a real entity with its own history and contact data.
-- Import/export (CSV) for products and invoice lines, which is how the spreadsheet users would move.
-- Restoring a soft-deleted product, with the SKU reservation released deliberately.
-- A second tax mode (per-line rate or tax-exempt customers) and an explicit rounding policy UI.
-- Browser tests for the interaction rows that are manual today, once Chromium's dependencies can be
-  installed in this environment.
+- I would have liked to polish the workflow better and set up better skills and mcps, as well as plan the implementation details more and define the scope more heavily.
+- I feel like I rushed reviewing a lot of goals to hit the deliverable deadline and would like to take more time to understand the code better. But as it is, I have spent almost every waking hour since 1am WIB tinkering on this.
+- Probably implement playwright into the TDD since I ditched it midway through implementation. I figured it would take too long to get right with current constraints. I would also like to go through the app more and bug test the frontend since I didn't get much time to do that
 
 ## AI usage
 
@@ -170,10 +156,14 @@ that a human reviewed and accepted:
 - Every claim on those cards is a command plus a revision (`pnpm test unit`, `pnpm test integration`,
   `lint`/`typecheck`/`build`, HTTP checks) rather than a summary. Where a check could not be run — the
   browser phase, which was removed on purpose — the cards say so instead of implying coverage.
-- The AI wrote application code, tests and documentation; the human set the scope, answered
-  specification questions and verified the UI in a browser before accepting each task.
+- The AI wrote application code, tests and documentation; the human set the scope, reviewed, fixed, and implemented the code, answered
+  specification questions and design choices, and verified the UI in a browser before accepting each task (depending on task).
 - Known limits were handled explicitly: generated code was reviewed against the plan, no requirement
   ID or time budget was invented, and a failing check was reported as failing rather than tuned away.
+
+## Time taken
+
+Approx. 16 hrs with short breaks in between to eat and such.
 
 ## Repository layout
 
@@ -190,11 +180,6 @@ docker/         container entrypoint (migrate, seed, serve)
 
 ## Troubleshooting
 
-- `docker compose` reporting a permission error means your user cannot reach the Docker socket; add
-  the user to the `docker` group, or on this machine prefix the command with `sg docker -c '…'`.
-- Mutations answering `403 ORIGIN_REJECTED` mean `BETTER_AUTH_URL` does not match the origin **and
-  host string** you opened (`localhost` and `127.0.0.1` are different origins). Change the URL you
-  use or the variable, then restart.
 - `pnpm test integration` needs the Compose `test` profile up (`docker compose --profile test up -d
   postgres-test`) and the shared test database free; it refuses to run against the development
   database by design.
