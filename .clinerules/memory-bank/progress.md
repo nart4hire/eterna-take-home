@@ -34,6 +34,8 @@ C built and ran `docker compose up --build` from a third fresh clone under its o
 `http://localhost:3000`. D11 is also recorded in the graph's `post_acceptance_fixes`, since the fix
 touches T00-owned paths.
 
+Post-acceptance, the user's Swagger pass found that the document declared a non-default `jsonSchemaDialect`, which Swagger UI refuses to render; the field was removed from `lib/openapi.ts`, pinned absent by `tests/unit/documentation.test.ts`, re-verified (unit 91/91, integration 136/136, lint/typecheck/build 0, live document without the field) and recorded in the graph's `post_acceptance_fixes` and as `docs/discrepancies.md` D13.
+
 Limitations recorded rather than claimed: Swagger UI rendering in a browser stays a reviewer-checklist
 row (AMEND-T04-1 removed the browser suite), the loading/error boundaries stay *not exercisable*, the
 README hour line is the author's, and T09's O14 (unknown/malformed/foreign invoice ids answer the RSC

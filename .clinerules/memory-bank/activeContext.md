@@ -36,7 +36,7 @@ C built and ran `docker compose up --build` from a third fresh clone under its o
 (bundled postgres on host port 5442 so the shared dev database stayed untouched), using the app at
 `http://localhost:3000`. Recorded limitations: Swagger UI rendering stays a reviewer-checklist row,
 the loading/error boundaries stay *not exercisable*, the README hour line is the author's, and T09's
-O14 is documented as D12. `task/T10-release` stays frozen at `08bf6f8`.
+O14 is documented as D12. Post-acceptance the user's Swagger pass found a non-default `jsonSchemaDialect` in the document, which Swagger UI refuses to render: the field was removed from `lib/openapi.ts`, pinned absent by the documentation suite, re-verified on `main` (unit 91/91, integration 136/136, lint/typecheck/build 0, live document without the field) and recorded in `post_acceptance_fixes` and as D13. `task/T10-release` stays frozen at `08bf6f8`.
 
 ## T09 accepted and merged (coordinator, 2026-09-18)
 

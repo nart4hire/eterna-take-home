@@ -110,12 +110,13 @@ const responseRef = (name: string): ResponseOrRef => ({ $ref: `#/components/resp
 /**
  * Request and query schemas are derived from the very Zod objects the handlers validate with, so the
  * document cannot drift from the accepted input. `io: "input"` keeps transforms out (a UUID is
- * documented as the string the client sends) and the dialect header is dropped because the OpenAPI
- * 3.1 document declares `jsonSchemaDialect` once.
+ * documented as the string the client sends) and the `$schema` header is dropped because the document
+ * relies on OpenAPI 3.1's default dialect (built on JSON Schema 2020-12) instead of declaring a
+ * non-default `jsonSchemaDialect`, which Swagger UI rejects at render time.
  */
 const fromZod = (schema: z.ZodType): Schema => {
   const document = z.toJSONSchema(schema, { io: "input", target: "draft-2020-12" }) as Record<string, unknown>;
-  // The dialect header is dropped because the OpenAPI 3.1 document declares `jsonSchemaDialect` once.
+  // Embedded `$schema` would declare a dialect the OpenAPI document itself does not; see above.
   delete document.$schema;
   return document as Schema;
 };
@@ -610,7 +611,8 @@ const paths: Record<string, PathItemObject> = {
  */
 export const openApiDocument = {
   openapi: "3.1.0",
-  jsonSchemaDialect: "https://json-schema.org/draft/2020-12/schema",
+  // Deliberately no `jsonSchemaDialect`: the schemas use the OAS 3.1 default dialect (JSON Schema
+  // 2020-12 based), and Swagger UI warns and refuses to render any other value.
   info: {
     title: "StockFlow API",
     version: "1.0.0",

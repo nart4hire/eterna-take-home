@@ -187,4 +187,16 @@ Coordinator acceptance / merge SHA: `90bc26065526d05a596c4747e305baf545631705` (
 `origin/main`); retained branch `task/T10-release` at `08bf6f8`; central records updated (graph
 `acceptance_records.T10`, `docs/execution/dependency-tree.md`, memory bank, and this card).
 
+## Post-acceptance fix (2026-09-18)
+
+The user's Swagger pass over `/docs` raised one defect, fixed on `main` after acceptance and recorded
+in the graph's `post_acceptance_fixes` and as `docs/discrepancies.md` D13: the document declared
+`jsonSchemaDialect: https://json-schema.org/draft/2020-12/schema`, and Swagger UI only supports the
+OpenAPI default, warning that other values are unsupported and refusing to render. The field carried no
+information for our schemas (plain JSON Schema keywords, which the OAS 3.1 base dialect inherits), so it
+was removed from `lib/openapi.ts`; `tests/unit/documentation.test.ts` now pins its absence, and the
+`/api/openapi.json` route is unchanged. Re-verified on `main`: unit 91/91 (documentation 11/11),
+integration 136/136, lint/typecheck/build 0, and the live document parsed as `openapi 3.1.0` with 11
+paths / 21 schemas and no `jsonSchemaDialect`. `task/T10-release` stays frozen at `08bf6f8`.
+
 

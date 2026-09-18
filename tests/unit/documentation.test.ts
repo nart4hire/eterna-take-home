@@ -125,7 +125,10 @@ describe("N5: OpenAPI 3.1 specification", () => {
     const validated = (await SwaggerParser.validate(clone)) as { openapi?: string; info?: { title?: string } };
     expect(validated.openapi).toBe("3.1.0");
     expect(validated.info?.title).toBe("StockFlow API");
-    expect(openApiDocument.jsonSchemaDialect).toBe("https://json-schema.org/draft/2020-12/schema");
+    // The schemas use the OAS 3.1 default dialect, so the optional field stays absent: Swagger UI
+    // warns "Values different from the default one are currently not supported" for any other value.
+    expect(openApiDocument.jsonSchemaDialect).toBeUndefined();
+    expect(JSON.stringify(openApiDocument)).not.toContain("jsonSchemaDialect");
     expect(JSON.stringify(openApiDocument).match(/"\$ref":"(?!#\/)[^"]+"/g)).toBeNull();
   });
 

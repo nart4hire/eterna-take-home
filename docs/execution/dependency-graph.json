@@ -97,6 +97,15 @@
   },
   "post_acceptance_fixes": [
     {
+      "branch": "main (coordinator fix; task/T10-release stays frozen at 08bf6f8)",
+      "owner": "coordinator, under the user's post-acceptance Swagger report",
+      "scope": "T10-owned paths only: /home/areion/projects/eterna-take-home/lib/openapi.ts and /home/areion/projects/eterna-take-home/tests/unit/documentation.test.ts",
+      "reason": "The user's Swagger pass surfaced a Swagger UI warning in /docs: OpenAPI.jsonSchemaDialect field contains a value different from the default value of https://spec.openapis.org/oas/3.1/dialect/base; values different from the default one are currently not supported. The vendored bundle confirms the check (selectJsonSchemaDialectDefault returns that default). The document declared https://json-schema.org/draft/2020-12/schema, which carried no information - the schemas use plain JSON Schema keywords that the OAS 3.1 base dialect (2020-12 based) inherits - while it disabled the viewer's rendering path.",
+      "authorization": "The user reported the warning directly and the coordinator role for the completion step is already granted; applied as a coordinator commit on main, with the frozen task branch left untouched, exactly like the earlier post-acceptance fixes.",
+      "implementation": "jsonSchemaDialect removed from lib/openapi.ts so OpenAPI 3.1's default dialect applies; the fromZod comment explains why an embedded $schema is stripped; tests/unit/documentation.test.ts asserts the field is absent and that the serialized document never contains it.",
+      "verification": "pnpm test unit 91/91 (documentation suite 11/11), pnpm lint 0, pnpm typecheck 0, pnpm build 0 with /api/openapi.json and /docs in the route table, pnpm test integration 136/136; the running dev server serves the document without the field (openapi 3.1.0, 11 paths, 21 schemas), so the Swagger UI warning condition can no longer trigger."
+    },
+    {
       "branch": "task/T10-release",
       "owner": "coordinator, under the user's T10 release dispatch",
       "scope": "T00-owned paths only: /home/areion/projects/eterna-take-home/package.json and /home/areion/projects/eterna-take-home/tests/unit/test-harness.test.ts",
