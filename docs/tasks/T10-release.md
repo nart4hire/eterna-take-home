@@ -9,6 +9,13 @@ Accepted dependency revisions: Not recorded
 
 > **Requirement amendment (user, 2026-09-18):** Playwright was removed from the application (decision record on T04's card), so this card no longer owns `tests/e2e/docs.spec.ts`, the release rehearsal installs no browser and no release step depends on a browser phase. Two duties were added instead: the README must document the container workflow that T04 introduced ("clone → populate env where necessary → `docker compose up`"), and the 36-ID ledger must record F1–F6 as reviewer-checklist results (including "not exercisable" items) instead of browser-test titles.
 
+> **Scope amendment (user, 2026-09-18 — API documentation is delivered separately from the client application).** Decision from the user's T08 browser check-off: a client is not the maintainer of the API, so developer documentation must not appear in the client-facing application. Consequences for this task:
+>
+> - The OpenAPI 3.1 spec stays machine-readable and public at `GET /api/openapi.json`, still validated against the implemented handlers.
+> - The human-readable Swagger surface must stay **outside the client app**: `app/docs/page.tsx` renders standalone, outside the `(dashboard)` shell, and no client-facing screen may link to it or advertise it. T08's rework already removed the shell's `API docs` navigation entry for exactly this reason, and it must not come back.
+> - `app/docs/page.tsx` and `components/swagger-viewer.tsx` remain this task's owned files; they may be changed only to satisfy that separation (for example no dependency on dashboard-only components, no session-guard requirement borrowed from the shell, no entry in `app/(dashboard)/layout.tsx`).
+> - The README documents the standalone docs URL (the plan's README line already requires a Swagger URL) and the 36-ID ledger's N5 row must state that the client UI exposes no developer documentation.
+
 ## Scope and ownership
 
 Own T10 files in `/home/areion/projects/eterna-take-home/docs/execution/dependency-graph.json` and this card. Follow `/home/areion/projects/eterna-take-home/.cline/skills/implement-task-card/SKILL.md`. Read all task handoffs and plan Testing/Dependencies/release criteria. Audit all 36 requirement IDs, not only N IDs. Feature regressions pause for owner/coordinator rework; release task cannot freely edit every source file.

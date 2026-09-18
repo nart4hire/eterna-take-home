@@ -128,7 +128,7 @@ Pages are server shells; loaders validate sessions without HTTP self-fetches. Cl
 | `/home/areion/projects/eterna-take-home/app/(dashboard)/invoices/new/page.tsx` | NewInvoicePage: InvoiceForm with configured tax |
 | `/home/areion/projects/eterna-take-home/app/(dashboard)/invoices/[id]/page.tsx` | InvoiceDetailPage: snapshots/totals/actions/draft-edit link |
 | `/home/areion/projects/eterna-take-home/app/(dashboard)/invoices/[id]/edit/page.tsx` | EditInvoicePage: draft-only InvoiceForm with snapshots/version |
-| `/home/areion/projects/eterna-take-home/app/docs/page.tsx` | DocsPage: SwaggerViewer |
+| `/home/areion/projects/eterna-take-home/app/docs/page.tsx` | DocsPage: standalone SwaggerViewer surface for developers, outside the client dashboard shell and never linked from a client screen (user scope amendment 2026-09-18) |
 | `/home/areion/projects/eterna-take-home/app/error.tsx` | RootError: non-dashboard fallback |
 | `/home/areion/projects/eterna-take-home/app/not-found.tsx` | NotFound: readable missing-resource state |
 | `/home/areion/projects/eterna-take-home/components/auth-form.tsx` | AuthForm: credentials, pending, server errors |
@@ -142,6 +142,8 @@ Pages are server shells; loaders validate sessions without HTTP self-fetches. Cl
 | `/home/areion/projects/eterna-take-home/components/pagination.tsx` | Pagination: query-driven previous/next |
 | `/home/areion/projects/eterna-take-home/components/swagger-viewer.tsx` | SwaggerViewer: client-only swagger-ui-dist; same-origin cookies, no CDN/external validator |
 | `/home/areion/projects/eterna-take-home/components.json` | shadcn Tailwind v4 configuration, existing @ alias |
+
+**User scope amendment (2026-09-18): keep API documentation separate from the client application.** A client is not the maintainer of the API, so developer documentation must not be surfaced in the client app: the dashboard navigation links client screens only (T08's rework removed the `API docs` entry from `app/(dashboard)/layout.tsx` and added `components/nav-link.tsx` for the active-section highlight), the OpenAPI spec stays a machine-readable public endpoint (`GET /api/openapi.json`), and the Swagger viewer is a standalone page outside the `(dashboard)` shell whose URL the README documents. N5 is verified against that standalone surface, and the ledger must state that the client UI exposes no developer documentation.
 
 Generate only required shadcn files: `/home/areion/projects/eterna-take-home/components/ui/button.tsx`, `/home/areion/projects/eterna-take-home/components/ui/input.tsx`, `/home/areion/projects/eterna-take-home/components/ui/label.tsx`, `/home/areion/projects/eterna-take-home/components/ui/textarea.tsx`, `/home/areion/projects/eterna-take-home/components/ui/table.tsx`, `/home/areion/projects/eterna-take-home/components/ui/card.tsx`, `/home/areion/projects/eterna-take-home/components/ui/badge.tsx`, `/home/areion/projects/eterna-take-home/components/ui/alert.tsx`, `/home/areion/projects/eterna-take-home/components/ui/alert-dialog.tsx`, `/home/areion/projects/eterna-take-home/components/ui/skeleton.tsx`. Native select suffices for status. Use labels, role=alert, aria-busy, empty states, disabled duplicate submissions. API 401 navigates to login; no unvalidated return URLs. Display saved server totals even if a stale product preview differed; label preview provisional.
 
