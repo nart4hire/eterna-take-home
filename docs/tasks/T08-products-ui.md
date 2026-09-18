@@ -1,7 +1,7 @@
 # T08 — Products UI
 
-Status: REVIEW
-Owner: T08 worker (chat dispatch "I want you to implement T08" → implementation, commits and task-branch push authorized; main merge NOT authorized)
+Status: REVIEW (user browser check-off complete; coordinator rework applied, `origin/main` integration and acceptance pending)
+Owner: T08 worker (chat dispatch "I want you to implement T08" → implementation, commits and task-branch push authorized); the two rework items below were applied by the coordinator under explicit user direction
 Depends on: T04, T05
 Requirement IDs: F2, F5, F6
 Branch / worktree / base SHA: `task/T08-products-ui` / `/home/areion/projects/eterna-take-home-2/.worktrees/T08-products-ui` (PRIMARY `/home/areion/projects/eterna-take-home-2`, coordinator-confirmed as this session's checkout) / base `f8f276343a0e9cb96980301ed47e5cd407e64b37` = fetched `origin/main`
@@ -23,6 +23,15 @@ Accepted dependency revisions: T04 approved tip `e22cefc60d366f5624e5524396f8bed
 > - **O10 — a product's not-found page renders outside the dashboard shell**: there is no `app/(dashboard)/not-found.tsx` (T04 shipped the root one only), so a malformed, unknown, foreign or deleted id shows the root 404 without the app navigation. Cosmetic.
 >
 > The walkthrough also repeats the two limitations this card already discloses: the UI has no automated test of its own (no graph-owned test path, and AMEND-T04-1 removed the browser layer), and the recorded live matrix is worker-run rather than independent evidence.
+
+> **User rework after the browser check-off (user, 2026-09-18).** The user worked through the products checklist in a browser and signed it off, raising exactly two items; both are resolved in the fix commit that sits immediately after `87d6fd4` on this branch (its SHA is recorded in the coordinator acceptance record; the rework changed no requirement ID):
+>
+> 1. **The active navigation section is now highlighted.** `components/nav-link.tsx` is a small client component that resolves the current path with `usePathname()` and marks the section it belongs to (`bg-accent text-accent-foreground font-medium` plus `aria-current="page"`, so the state is not colour-only), and `app/(dashboard)/layout.tsx` renders `NavLink` for Products and Invoices. `/products`, `/products/new` and `/products/<id>/edit` consequently all read as "Products" — before this, nothing changed on screen when the Products item was already the current page. The user's words: they "found myself clicking the products button a few times without realizing I was already in products".
+> 2. **Developer documentation stays out of the client app.** The shell's `API docs` link to `/docs` was removed, because "the client is not the maintainer so that will only be clutter to them": API documentation is delivered separately, the OpenAPI spec stays a machine-readable endpoint and T10's card now forbids surfacing the Swagger viewer in the client navigation (see `docs/tasks/T10-release.md` and the user scope amendment in `implementation_plan.md`).
+>
+> Both items are presentation/scope only: no API contract, schema, money or stock rule changed, so the T05/T06/T07 integration suites keep their meaning. The layout is a T04-owned shared file, so this is a coordinator-recorded shared-shell change with user authorization; T09 inherits `NavLink` for the invoice screens and must not re-add a docs entry.
+>
+> The user's check-off also answers the review addendum's open questions by acceptance: observations O1–O10 are accepted as they are (only the two items above were requested), O9's matrix script stays in `/tmp` with the card's prose plus `agent_explanations/T08.md` appendix A as the reproducible record, and O2/O10 remain follow-ups for whichever task next owns the shared pagination helper or the dashboard boundaries. The products checklist rows below were extended with one row for the active-navigation behaviour.
 
 ## Scope and ownership
 
@@ -81,6 +90,7 @@ Automated coverage behind these screens: T05's products integration suite (25 re
 - [ ] With the same product open in two tabs, saving the older form reports that the product changed and loads the latest saved values into the form instead of overwriting them (F2, F6).
 - [ ] An unreachable API shows a message with a retry rather than a blank area, and the dashboard boundary offers "Try again" (F6).
 - [ ] Labels, table headers and the edit/delete buttons are reachable and announce their action (for example "Delete DEMO-001"), and the empty state offers "Add a product" (F2, F6).
+- [ ] The header highlights the section you are in: on `/products` (and on `/products/new` and `/products/<id>/edit`) the **Products** item is visibly different from **Invoices** and carries `aria-current="page"`, so it is obvious you are already there; **Invoices** is not highlighted on any products screen, and no client-facing screen links to developer documentation (F2, F5).
 
 ## Contract notes for successors
 
@@ -90,16 +100,16 @@ Automated coverage behind these screens: T05's products integration suite (25 re
 - Client mutations: `POST /api/products` plus `PATCH`/`DELETE /api/products/[id]` through `apiFetch`; the delete body is `{ version }`, the patch body always carries `version` together with every mutable field, and `description: null` clears the text. A 401 keeps navigating to `/login` through `apiFetch`.
 - Money: the form converts the decimal string with the shared `parseMoney` helper and never does float arithmetic; `formatMoney` renders prices; cents→input uses `Math.trunc`/modulo so the prefilled value round-trips exactly.
 - Failure UX: server `fields` render inline with `aria-invalid`/`aria-describedby`, the alert carries the message, pending disables resubmission, typed values survive, `409 VERSION_CONFLICT` reloads the saved product (with a retry button if that reload fails), and `404` on delete explains that the product no longer exists after refreshing.
-- No shared file was amended: `Pagination`, `apiFetch`, the T04 UI kit and T05's service/API were used exactly as published. The T08 diff is the five owned files plus this card.
+- Shared-shell change in the rework (user-directed): `app/(dashboard)/layout.tsx` — a T04-owned file — now renders `components/nav-link.tsx` for its section links and no longer links to `/docs`. `NavLink` resolves the active section from `usePathname()` (exact path, or any nested path under it) and sets `aria-current="page"`; the new component is recorded as T04's path in the graph's scope amendment. Nothing else in the T04 UI kit, `apiFetch`, `Pagination` or T05's service/API was touched. The original task diff remains the five owned files plus this card.
 
 ## Handoff
 
-Completed: all three deliverables — the products list/search/pagination/delete screen, the create and edit forms with independent per-page session checks, and the products reviewer checklist rows.
-Remaining (outside T08): reviewer/coordinator acceptance and merge; T10 records checklist results per requirement ID; T09 owns the invoice screens.
-Red/green commands and results: see Validation — every gate green at `c0ff16f` (integration 81/81, unit 78/78, lint/typecheck/build 0, live matrix 67/67, dev-loop MCP clean). The UI has no red phase by AMEND-T04-1, and the deliberate absence of new test files is explained in the TDD position.
-Implementation/tested SHA: `c0ff16f` — the only executable change; this card's evidence commit and the review walkthrough/addendum are documentation-only commits on top of it. Integrated main SHA: `f8f276343a0e9cb96980301ed47e5cd407e64b37` (= `origin/main` at branch creation, still current, so no integration merge was required).
+Completed: all three deliverables — the products list/search/pagination/delete screen, the create and edit forms with independent per-page session checks, and the products reviewer checklist rows. The user's browser check-off of those rows (2026-09-18) raised two items, both fixed in the rework commit on this branch: the active-navigation highlight (`components/nav-link.tsx` plus `app/(dashboard)/layout.tsx`) and the removal of the client-facing `/docs` link together with the docs-separation requirement recorded on the T10 card and in the plan.
+Remaining (outside T08): coordinator integration of `origin/main` (T06 and T07 accepted) into this branch and the re-validation of the integrated revision, then acceptance and the `--no-ff` merge; T09 inherits `NavLink` for the invoice screens; T10 records the checklist results per requirement ID.
+Red/green commands and results: see Validation — every gate green at `c0ff16f` (integration 81/81, unit 78/78, lint/typecheck/build 0, live matrix 67/67, dev-loop MCP clean); the rework and integration re-run those gates on the integrated revision, and those numbers (plus the rendered-navigation check) are recorded in this branch's docs-only evidence commit and in the coordinator acceptance record rather than here, because the integrated revision is created after this commit. The UI has no red phase by AMEND-T04-1, and the deliberate absence of new test files is explained in the TDD position.
+Implementation/tested SHA: `c0ff16f` (original work) and the rework commit immediately after `87d6fd4` (nav highlight, docs separation; presentation and scope only). Integrated main SHA: `af6df91` — the `origin/main` carrying accepted T06 and T07 that the integration commit merges.
 Uncommitted work: none; the worktree is clean apart from ignored `.env`, `node_modules`, `generated/` and `.next/`.
-Review record: `agent_explanations/T08.md` — a `review-task-card`-style walkthrough written by the implementing agent at the coordinator's request (self-review, not independent acceptance): requirements/scope, architecture, file-by-file explanation with line references, an illustrative end-to-end path, a correctness/edge-case/security table, the evidence map, observations O1–O10, and appendix A carrying the live-matrix script byte-identically to the executed one. The observations are summarised in this card's review addendum; the review commits changed no executable file and no requirement.
-Push/PR status: the code commit, this card and the walkthrough are pushed to `origin/task/T08-products-ui` with the remote SHA verified against local `HEAD`; `main` untouched.
-Next action: coordinator review of the diff, card, walkthrough and evidence, then a `--no-ff` merge of the branch tip and the merged-revision verification; T09/T10 become eligible only after that.
-Coordinator acceptance / merge SHA: Pending.
+Review record: `agent_explanations/T08.md` — a `review-task-card`-style walkthrough written by the implementing agent at the coordinator's request (self-review, not independent acceptance): requirements/scope, architecture, file-by-file explanation with line references, an illustrative end-to-end path, a correctness/edge-case/security table, the evidence map, observations O1–O10, and appendix A carrying the live-matrix script byte-identically to the executed one. The observations are summarised in this card's review addendum; the review commits changed no executable file and no requirement. The user's browser check-off and the rework block above complete the record.
+Push/PR status: the code commit, the evidence commits and this rework are pushed to `origin/task/T08-products-ui` with the remote SHA verified against local `HEAD`; `main` is only touched by the coordinator's `--no-ff` acceptance merge.
+Next action: coordinator integration of `af6df91` into this branch, full gate re-run plus the live matrix and the rendered-navigation check on the integrated revision, then the `--no-ff` merge of the branch tip into `main`; T10 waits on T08 and T09.
+Coordinator acceptance / merge SHA: Pending (the acceptance record lands in the graph's `acceptance_records.T08`).
