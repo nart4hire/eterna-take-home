@@ -1,8 +1,10 @@
 # Progress
 
-## Current acceptance — 2026-09-18
+## Current acceptance — 2026-09-18 (T00, T01)
 
-T00 approved by user; task tip `7d880636bd1a045f3ff8eb4d01b893a8a91bb34c`, tested acceptance merge `997874c5325a53c26d68658ce1bfb3a1f466282e`. Coordinator frozen install / 22 unit tests / lint / typecheck / build all exit 0. No DB/browser rerun during acceptance; worker's real-PG parent/child reset smoke is recorded in its card. Integration/E2E remain deferred, not passed. Verify published merge ancestry before successors; retain branch unchanged. T01/T02 eligible for explicit dispatch, no successor assigned yet.
+T00 approved by user; task tip `7d880636bd1a045f3ff8eb4d01b893a8a91bb34c`, tested acceptance merge `997874c5325a53c26d68658ce1bfb3a1f466282e`. Coordinator frozen install / 22 unit tests / lint / typecheck / build all exit 0. No DB/browser rerun during acceptance; worker's real-PG parent/child reset smoke is recorded in its card. Integration/E2E remain deferred, not passed. Verify published merge ancestry before successors; retain branch unchanged.
+
+T01 approved by user and merged by the coordinator: approved task tip `a19d7c8edbe260a7086e101bd34f06e6d2f9452c`, tested merge `b801d3ae93e7cbca1e4f659bd17e375609fcf7de` (base `237b01b`, `--no-ff`, no conflicts). Merged-revision verification: `pnpm test integration` 25/25 on real PostgreSQL (constraint/enum/integer boundaries, BetterAuth 1.7.5 schema parity, rollback and true serialization-conflict retry), `pnpm lint` 0, `pnpm build` 0, and `pnpm test unit` 28/28 with `pnpm typecheck` 0 after `pnpm db:generate`. **Accepted limitation (user decision, "accept as-is"):** `generated/prisma` is git-ignored and only the integration path runs `prisma generate`, so a clean checkout needs `pnpm db:generate` before `pnpm test unit`/`pnpm typecheck`; documented in `README.md` and techContext rather than fixed inside T01. T01's frozen branch stays unchanged at `a19d7c8`. T02 is still unaccepted (tip `026abf186bf582e9cc8035ea25e6dbc1e75a22f4`, REVIEW) and needs no manual generate after integrating this merge. E2E still deferred. **Post-acceptance fix:** branch `fix/harness-prisma-generate` (red `3745418`, impl `ae26c77`, user-approved, no separate reviewer, coordinator-authored on T00-owned paths) makes `pnpm test unit`, `pnpm typecheck` and `pnpm build` generate the client themselves (harness `T00-H21..H23`; unit 28 → 31), verified by a clean-checkout simulation, a per-gate generate proof, `pnpm test integration` 25/25 and `pnpm lint` 0.
 
 The dated planning-baseline statements below (no harness, Docker unavailable, all acceptance pending) are historical, superseded by this acceptance and graph record. Skill now specifies coordinator merge/push verification, frozen retained branches, numeric short-dispatch aliases and evidence-based dependency qualification without post-approval status commits.
 
@@ -26,7 +28,7 @@ Dependency source: `/home/areion/projects/eterna-take-home/docs/execution/depend
 | Task | Status | Depends on | Completed deliverables |
 |---|---|---|---|
 | T00 Toolchain | DONE | None | Pinned toolchain/Compose, guarded harness (22 tests), env inventory; merge 997874c verified |
-| T01 Database | TODO | T00 | None |
+| T01 Database | DONE | T00 | Prisma schema + initial migration with 11 CHECK constraints, lazy pg-adapter client, bounded serializable retry helper, 25 real-PG + 6 unit tests; merge b801d3a verified; post-acceptance harness fix `fix/harness-prisma-generate` removes the manual `pnpm db:generate` prerequisite (unit 31) |
 | T02 Contracts | TODO | T00 | None |
 | T03 Auth/seed | TODO | T01,T02 | None |
 | T04 UI/auth | TODO | T03 | None |

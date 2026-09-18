@@ -20,6 +20,19 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Local prerequisites (StockFlow)
+
+`generated/prisma` is a generated build artifact and is not committed. Every local gate generates it on demand, so no manual step is needed:
+
+```bash
+pnpm install --frozen-lockfile
+pnpm test unit    # runner runs `prisma generate` first; no database needed
+pnpm typecheck    # runs `prisma generate` first
+pnpm build        # runs `prisma generate` first
+```
+
+Prisma client generation is offline and needs no database. `pnpm test integration` also generates the client itself and additionally requires the isolated test database from the Compose `test` profile (localhost:5433/stockflow_test). Only raw `pnpm exec vitest` / `tsc --noEmit` invocations bypass these scripts and still need a manual `pnpm db:generate` first. Docker access may need `sg docker -c` on this machine.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:

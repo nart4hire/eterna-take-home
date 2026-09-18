@@ -1,10 +1,14 @@
 # Active Context
 
-## Current update — T00 accepted (supersedes historical planning notes below)
+## Current update — T01 accepted (supersedes historical planning notes below)
 
-User approved T00. Coordinator merged approved task tip `7d880636bd1a045f3ff8eb4d01b893a8a91bb34c` at `997874c5325a53c26d68658ce1bfb3a1f466282e`. Frozen install, 22 unit tests, lint, typecheck and build passed on this merge. Verify its ancestry on fetched origin/main before dispatch. Retain the task branch unchanged; historical REVIEW/Pending text does not block accepted dependencies. Graph acceptance records and skill sections 1/7 govern evidence and coordinator merges. No post-approval task-branch bookkeeping commits.
+T00 accepted: task tip `7d880636bd1a045f3ff8eb4d01b893a8a91bb34c`, merge `997874c5325a53c26d68658ce1bfb3a1f466282e`. T01 accepted and merged: task tip `a19d7c8edbe260a7086e101bd34f06e6d2f9452c`, tested merge `b801d3ae93e7cbca1e4f659bd17e375609fcf7de` (base `237b01b`). Both branches retained unchanged; historical REVIEW/Pending card text does not block accepted dependencies. Graph acceptance records and skill sections 1/7 govern evidence and coordinator merges; no post-approval task-branch bookkeeping commits.
 
-T01/T02 are dependency-eligible, not assigned yet. A unique explicit dispatch such as "please work on T001" resolves to T01 and authorizes its implementation/task-branch push; no separate READY commit needed. Ownership conflicts and DB/port leases still block. Docker worked via `sg docker -c`; worker left shared test service running and released its lease. Recheck before mutation. Schema/auth/business/integration/E2E remain future work. Bare pnpm test preflights missing suites before running any tests; pnpm test unit runs the current 22.
+T01 delivers the PostgreSQL contract: `prisma/schema.prisma` (7 models + `InvoiceStatus`), the frozen initial migration `20260918000100_init` with 11 scalar CHECK constraints and RESTRICT/CASCADE rules, `lib/prisma.ts` lazy `getPrisma()`, and `lib/services/transaction.ts` `withSerializableRetry` (Serializable, retries only `P2034`, 3 total attempts, rethrows for T02's 409 mapping). Verified on the merge: integration 25/25 real-PG, lint 0, build 0, unit 28/28 and typecheck 0 after `pnpm db:generate`.
+
+**Prerequisite resolved (2026-09-18):** the T01 accepted limitation (clean checkouts needed a manual `pnpm db:generate` before `pnpm typecheck`/`pnpm test unit`) is fixed by coordinator branch `fix/harness-prisma-generate` (red `3745418`, impl `ae26c77`; user-approved, no separate reviewer, merged to `main`). The runner's unit fast path generates the client, `test:unit` routes through the runner, and `typecheck`/`build` are prefixed with `prisma generate`; harness tests `T00-H21..H23` (unit 28 → 31) pin it. Successors no longer need a manual generate for the standard gates — only raw `pnpm exec vitest`/`tsc --noEmit` invocations do. T02 (REVIEW, tip `026abf1`) integrates this main and revalidates with no manual step.
+
+Next: T02 remains unaccepted and is not automatically dispatched; T03 stays blocked until both T01 and T02 are accepted and published. Ownership conflicts and DB/port leases still block. Docker works via `sg docker -c`; the shared test service was left running and leases are released. Bare `pnpm test` still preflights missing suites (integration now exists, E2E does not).
 
 ## Historical planning context
 

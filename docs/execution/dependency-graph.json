@@ -11,9 +11,28 @@
       "approved_task_sha": "7d880636bd1a045f3ff8eb4d01b893a8a91bb34c",
       "tested_merge_sha": "997874c5325a53c26d68658ce1bfb3a1f466282e",
       "branch": "task/T00-toolchain",
-      "verification": "Coordinator: frozen install, 22 unit tests, lint, typecheck and build exit 0. User approved merge; verify merge ancestry on fetched origin/main before dispatch. Integration/E2E deferred. Retain task branch unchanged."
+      "verification": "Coordinator: frozen install, 22 unit tests, lint, typecheck and build exit 0. User approved merge; verify merge ancestry on fetched origin/main before dispatch. Integration/E2E deferred. Retain task branch unchanged. Post-acceptance amendment: the coordinator applied the harness fix recorded in post_acceptance_fixes to this task's owned paths (scripts/test.ts unit fast path, package.json scripts, tests/unit/test-harness.test.ts); the frozen task branch is unchanged, so the graph record is authoritative for that change."
+    },
+    "T01": {
+      "status": "DONE",
+      "approved_task_sha": "a19d7c8edbe260a7086e101bd34f06e6d2f9452c",
+      "tested_merge_sha": "b801d3ae93e7cbca1e4f659bd17e375609fcf7de",
+      "branch": "task/T01-database",
+      "verification": "Coordinator merged pinned tip a19d7c8 with --no-ff (no conflicts) into b801d3a over base 237b01b; approved-SHA ancestry verified. Verified on the merged revision: pnpm test integration 25/25 against real PostgreSQL (self-generates client + migrate deploy), pnpm lint 0, pnpm build 0; pnpm test unit 28/28 and pnpm typecheck 0 after pnpm db:generate. Accepted limitation (user-approved): generated/prisma is git-ignored and only the integration path runs prisma generate, so a clean checkout must run pnpm db:generate before pnpm test unit / pnpm typecheck. Frozen branch retained unchanged at a19d7c8; E2E still deferred. Post-acceptance fix (user-approved, no separate reviewer): branch fix/harness-prisma-generate (red 3745418, impl ae26c77) makes the runner's unit fast path, test:unit, typecheck and build self-generate the Prisma client; harness T00-H21..H23 added (unit 28 -> 31). Verified by clean-checkout simulation, a per-gate generate proof, integration 25/25 and lint 0, so the accepted limitation above no longer applies to those gates."
     }
   },
+  "post_acceptance_fixes": [
+    {
+      "branch": "fix/harness-prisma-generate",
+      "owner": "coordinator",
+      "scope": "T00-owned paths only: /home/areion/projects/eterna-take-home/scripts/test.ts, /home/areion/projects/eterna-take-home/package.json, /home/areion/projects/eterna-take-home/tests/unit/test-harness.test.ts",
+      "reason": "generated/prisma is git-ignored and only the integration path ran prisma generate, so clean checkouts/worktrees failed pnpm test unit and pnpm typecheck until a manual pnpm db:generate. T01 accepted that limitation by user decision instead of fixing it; the friction recurs for every fresh worktree and produced a misleading (rather than loud) failure mode.",
+      "authorization": "Explicit user approval of Option 2 (runner fix plus generate prefixes on typecheck/build), fix branch merged to main with no separate reviewer. Frozen task/T00-toolchain and task/T01-database branches untouched, so this graph record and the task card note are the durable evidence for the amendment.",
+      "commits": { "red_tests": "3745418", "implementation": "ae26c77" },
+      "implementation": "scripts/test.ts unit fast path runs pnpm db:generate before vitest (offline, unit path stays Docker-free); package.json test:unit -> tsx scripts/test.ts unit, typecheck -> prisma generate && next typegen && tsc --noEmit, build -> prisma generate && next build; harness tests T00-H21..H23 pin all three (unit suite 28 -> 31).",
+      "verification": "Clean-checkout simulation (generated/ moved aside, tsconfig.tsbuildinfo cleared): pnpm test unit 31/31, pnpm typecheck 0, pnpm build 0. Stricter per-gate proof: with generated/ removed immediately beforehand, pnpm typecheck and pnpm build each printed 'Generated Prisma Client (7.9.1) to ./generated/prisma' and exited 0. Regression: pnpm test integration 25/25 on real PostgreSQL, pnpm lint 0. Only raw pnpm exec vitest / tsc --noEmit invocations still need a manual pnpm db:generate."
+    }
+  ],
   "worktree_policy": {
     "primary_checkout": "Coordinator supplies verified absolute PRIMARY; workers never edit its project files or run app installs/tests there.",
     "directory": "<PRIMARY>/.worktrees/<task-id>-<slug>",
