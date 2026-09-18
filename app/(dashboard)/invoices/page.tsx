@@ -71,6 +71,13 @@ export default async function InvoicesPage({ searchParams }: InvoicesPageProps) 
   }
 
   const { page, status: filter } = parsed.data;
+
+  // "All statuses" is the filter's default option, so an explicit empty ?status= is normalised away in the
+  // address: the canonical all-statuses URL is /invoices, keeping ?page= only when it is past the first page.
+  if (typeof params.status === "string" && params.status.length === 0) {
+    redirect(invoicesHref(undefined, page));
+  }
+
   const invoices = await listInvoices(user.id, parsed.data);
 
   // Cancelling or filtering the last row of the last page leaves a stale ?page=: land on the last real page.

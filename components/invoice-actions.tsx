@@ -198,7 +198,7 @@ export function InvoiceActions({ invoice }: InvoiceActionsProps) {
           </Button>
         ))}
         <p className="text-muted-foreground text-sm">
-          Draft version {invoice.version}: every action sends this version, so a change made elsewhere is reported instead of overwritten.
+          Version {invoice.version}: every action sends this version, so a change made elsewhere is reported instead of overwritten.
         </p>
       </div>
 

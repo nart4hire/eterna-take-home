@@ -53,6 +53,9 @@ export function InvoiceList({ page, status }: InvoiceListProps) {
           <select
             id="invoice-status-filter"
             name="status"
+            /* Remount when the committed status changes: React never re-applies `defaultValue` to an
+               uncontrolled select, so without this key the dropdown keeps the old choice after Clear. */
+            key={status ?? "all"}
             defaultValue={status ?? ""}
             className="border-input bg-background focus-visible:border-ring focus-visible:ring-ring/50 h-9 w-full min-w-40 rounded-md border px-3 py-1 text-base shadow-xs outline-none transition-[color,box-shadow] focus-visible:ring-[3px] md:text-sm"
           >

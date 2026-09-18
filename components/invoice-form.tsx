@@ -157,6 +157,8 @@ export function InvoiceForm(props: InvoiceFormProps) {
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [reloadFailed, setReloadFailed] = useState(false);
   const [stale, setStale] = useState(false);
+  /** True only for failures a plain re-submit can fix (transport/5xx), so the alert can offer a retry. */
+  const [retryable, setRetryable] = useState(false);
 
   const preview = previewOf(lines, taxRateBps);
   const customerError = fieldMessage(fieldErrors, "customerName");
@@ -246,6 +248,7 @@ export function InvoiceForm(props: InvoiceFormProps) {
     setNotice(null);
     setReloadFailed(false);
     setStale(false);
+    setRetryable(false);
     setFieldErrors({});
     try {
       if (invoiceId !== null) {
@@ -259,7 +262,8 @@ export function InvoiceForm(props: InvoiceFormProps) {
     } catch (error) {
       setPending(false);
       if (!(error instanceof ApiClientError)) {
-        setFailure("An unexpected error occurred");
+        setRetryable(true);
+        setFailure("The request could not reach the server, so nothing was saved. Check your connection and try again.");
         return;
       }
       const { code, message, fields } = error.body.error;
@@ -278,6 +282,7 @@ export function InvoiceForm(props: InvoiceFormProps) {
         setFailure("This invoice no longer exists. Return to the invoice list to continue.");
         return;
       }
+      setRetryable(error.status >= 500);
       setFailure(message);
     }
   }
@@ -533,6 +538,12 @@ export function InvoiceForm(props: InvoiceFormProps) {
             {rootErrors.map((message) => (
               <p key={message}>{message}</p>
             ))}
+            {retryable ? (
+              /* Inside the form, so a plain submit re-runs the same request with the typed values kept. */
+              <Button type="submit" variant="outline" size="sm" disabled={pending} aria-busy={pending}>
+                {pending ? "Retrying…" : "Try again"}
+              </Button>
+            ) : null}
             {stale ? (
               <Button asChild variant="outline" size="sm">
                 <Link href={isEdit && invoiceId !== null ? `/invoices/${invoiceId}` : "/invoices"}>
