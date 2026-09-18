@@ -275,6 +275,17 @@ describe("HARNESS FIX: every local gate generates the Prisma client itself", () 
       );
     }
   });
+
+  it("T00-H27 the documented local workflow generates the client itself", () => {
+    // Found by the T10 release rehearsal: on a fresh clone `generated/prisma` is absent, so
+    // `pnpm db:seed` (tsx imports @/generated/prisma/client) and `pnpm dev` (first request compiles
+    // lib/prisma.ts) failed with MODULE_NOT_FOUND, while the README promised no manual generate step.
+    for (const script of ["dev", "db:migrate", "db:seed"]) {
+      expect(pkg.scripts[script], `${script} must generate first`).toMatch(
+        /^prisma generate && /,
+      );
+    }
+  });
 });
 
 describe("HARNESS FIX: DB-backed children get a deterministic test environment", () => {
