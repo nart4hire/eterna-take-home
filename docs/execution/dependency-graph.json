@@ -69,6 +69,20 @@
       "commits": { "red_tests": "3745418", "implementation": "ae26c77" },
       "implementation": "scripts/test.ts unit fast path runs pnpm db:generate before vitest (offline, unit path stays Docker-free); package.json test:unit -> tsx scripts/test.ts unit, typecheck -> prisma generate && next typegen && tsc --noEmit, build -> prisma generate && next build; harness tests T00-H21..H23 pin all three (unit suite 28 -> 31).",
       "verification": "Clean-checkout simulation (generated/ moved aside, tsconfig.tsbuildinfo cleared): pnpm test unit 31/31, pnpm typecheck 0, pnpm build 0. Stricter per-gate proof: with generated/ removed immediately beforehand, pnpm typecheck and pnpm build each printed 'Generated Prisma Client (7.9.1) to ./generated/prisma' and exited 0. Regression: pnpm test integration 25/25 on real PostgreSQL, pnpm lint 0. Only raw pnpm exec vitest / tsc --noEmit invocations still need a manual pnpm db:generate."
+    },
+    {
+      "branch": "fix/test-env-determinism",
+      "owner": "coordinator",
+      "scope": "T00-owned /home/areion/projects/eterna-take-home/scripts/test.ts and /home/areion/projects/eterna-take-home/tests/unit/test-harness.test.ts; T03-owned /home/areion/projects/eterna-take-home/tests/integration/seed.test.ts (env-restore hygiene only)",
+      "reason": "The T06 review proved that acceptance evidence could depend on ambient configuration: invoice suites assert exact cents derived from TAX_RATE_BPS, while the runner loaded .env into its children without pinning that variable, so the same revision returned 109/109 with a local .env and 97 passed | 12 failed (109) without one. The runner already pins DATABASE_URL, TEST_DATABASE_URL, STOCKFLOW_DEV_DATABASE_URL, BETTER_AUTH_SECRET, BETTER_AUTH_URL and NODE_ENV after loading .env; TAX_RATE_BPS was the last app-read configuration input left to local configuration, and the same defect class would recur for T07/T09/T10 invoice assertions. Separately, T03's seed test restored NODE_ENV by assignment, which stores the string 'undefined' when the variable was unset - latent today only because the runner always sets NODE_ENV.",
+      "authorization": "Explicit user approval following the T06 review (merge T06, then land the runner pin and the seed hygiene as separate coordinator commits). Fix branch merged to main with no separate reviewer; frozen task branches untouched, so this graph record plus the memory-bank notes are the durable evidence.",
+      "commits": {
+        "red_tests": "97c82f5",
+        "implementation": "a9cf97f",
+        "seed_hygiene": "378e874"
+      },
+      "implementation": "scripts/test.ts assigns TAX_RATE_BPS: '1100' inside the injected child environment for DB-backed suites, beside the existing pins; a case that needs another rate still overrides it (T06's withTaxRate / withDefaultTaxRate exist for exactly that). tests/unit/test-harness.test.ts adds T00-H26 pinning the injection (unit 78 -> 79). tests/integration/seed.test.ts deletes NODE_ENV when it was unset instead of assigning undefined.",
+      "verification": "Red 97c82f5: pnpm test unit 78 passed | 1 failed (79) with the T00-H26 assertion failure on the unmodified runner. Green a9cf97f: pnpm test unit 79/79, pnpm lint 0, pnpm typecheck 0, pnpm build 0, and pnpm test integration 111/111 against real PostgreSQL under the postgres-test lease in an environment with no .env and no ambient TAX_RATE_BPS. Determinism proof: the same suite with TAX_RATE_BPS=500 exported is also 111/111, i.e. the runner pin overrides hostile ambient configuration (before this change that run failed every tax-derived total assertion). Seed hygiene 378e874 verified by a further full integration run 111/111 with pnpm lint 0 and pnpm typecheck 0; no behavioural test is possible for that latent path, which is why it rides as documented hygiene."
     }
   ],
   "scope_amendments": [
