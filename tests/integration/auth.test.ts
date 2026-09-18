@@ -1,11 +1,11 @@
 import { getRounds } from "bcryptjs";
-import { afterAll, describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it, vi } from "vitest";
 import { POST as loginRoute } from "@/app/api/auth/login/route";
 import { POST as logoutRoute } from "@/app/api/auth/logout/route";
 import { POST as registerRoute } from "@/app/api/auth/register/route";
 import { GET as sessionRoute } from "@/app/api/auth/session/route";
 import { BCRYPT_COST, hashPassword, validatePassword, verifyPassword } from "@/lib/auth/password";
-import { SESSION_EXPIRES_IN_SECONDS } from "@/lib/auth/server";
+import { SESSION_EXPIRES_IN_SECONDS, getAuth } from "@/lib/auth/server";
 import { getSessionUser, requireAuth } from "@/lib/auth/session";
 import { AppError } from "@/lib/http";
 import { getPrisma } from "@/lib/prisma";
@@ -93,6 +93,24 @@ describe("A1 A5: registration normalizes input and never signs the client in", (
     const malformed = await registerRoute(makeRequest("/api/auth/register", { method: "POST", body: "{oops", headers: { "content-type": "application/json" } }));
     expect(malformed.status).toBe(400);
     expect((await readErrorBody(malformed)).error.code).toBe("INVALID_JSON");
+  });
+
+  it("stays 201 without a cookie when the automatic session cannot be revoked", async () => {
+    // The cleanup step must not be able to fail the request: the client is handed no token either
+    // way, so a sign-out outage has to degrade into an inert, unreachable session row instead of a
+    // 500 returned after the account has already been committed.
+    const auth = getAuth();
+    const signOut = vi.spyOn(auth.api, "signOut").mockRejectedValueOnce(new Error("simulated sign-out outage"));
+    try {
+      const email = uniqueEmail("revoke-failure");
+      const response = await register(email);
+      expect(response.status).toBe(201);
+      expect(response.headers.getSetCookie()).toEqual([]);
+      const user = await getPrisma().user.findUniqueOrThrow({ where: { email } });
+      expect(user.email).toBe(email);
+    } finally {
+      signOut.mockRestore();
+    }
   });
 });
 
