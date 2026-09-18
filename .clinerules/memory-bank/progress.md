@@ -1,5 +1,11 @@
 # Progress
 
+## Current work — T04 in progress (AMEND-T04-1: Playwright removed, container work authorized)
+
+T04 is in REVIEW-pending state on `task/T04-ui-foundation` (worktree `/home/areion/projects/eterna-take-home-2/.worktrees/T04-ui-foundation`, base `14e8b71`): UI foundation, auth screens, session guards, client helper, pagination and boundaries pushed at `3ceb3c2`, with the tested revision `c3ae38b` (lint 0, typecheck 0, unit 77/77, integration 56/56 on real PostgreSQL, build 0). The earlier Playwright attempt and its harness defect (committed `testIgnore: ["**/.worktrees/**"]` made `pnpm test:e2e` collect zero tests in every feature worktree) are moot: that config is deleted.
+
+**AMEND-T04-1 (user decision, 2026-09-18)** removed Playwright from the application — config, dependency and lockfile entry, `test:e2e`, the runner's `e2e` subset, the `.gitignore`/eslint entries, the `next-e2e` port lease and all `tests/e2e/**` files (T04/T08/T09/T10). UI work is explicitly **not** test-driven: F1–F6 are verified by the reviewer checklist on the T04 card, extended by T08/T09 and recorded per ID by T10; automated coverage stays on unit tests, the real-PostgreSQL integration suites and lint/typecheck/build. The same amendment authorizes T04 (and T08/T09 where necessary) to add a simple `Dockerfile`, a `.dockerignore` and an `app` service in `docker-compose.yml` that pins the `mise.toml` versions (Node 24.21.0, pnpm 12.4.2) and makes `clone → populate env where necessary → docker compose up` sufficient on a fresh clone, migrations and demo seed included. The amendment was committed as one documentation commit before the implementation commits, per the user's instruction.
+
 ## Current acceptance — 2026-09-18 (T00, T01, T02, T03)
 
 T00 approved by user; task tip `7d880636bd1a045f3ff8eb4d01b893a8a91bb34c`, tested acceptance merge `997874c5325a53c26d68658ce1bfb3a1f466282e`. Coordinator frozen install / 22 unit tests / lint / typecheck / build all exit 0. No DB/browser rerun during acceptance; worker's real-PG parent/child reset smoke is recorded in its card. Integration/E2E remain deferred, not passed. Verify published merge ancestry before successors; retain branch unchanged.
@@ -29,7 +35,7 @@ The dated planning-baseline statements below (no harness, Docker unavailable, al
 
 ## Execution dashboard
 
-Dependency source: `/home/areion/projects/eterna-take-home/docs/execution/dependency-graph.json`. Coordinator updates this dashboard only after reviewing task evidence. T00–T03 are accepted and merged (graph `acceptance_records`); T04–T10 are unassigned and require explicit dispatches.
+Dependency source: `/home/areion/projects/eterna-take-home/docs/execution/dependency-graph.json`. Coordinator updates this dashboard only after reviewing task evidence. T00–T03 are accepted and merged (graph `acceptance_records`); T04 is in progress on `task/T04-ui-foundation`, T05 is in flight on `task/T05-products-api`, and T06–T10 still require explicit dispatches. `AMEND-T04-1` (user, 2026-09-18) removed Playwright and authorized the T04/T08/T09 container work.
 
 | Task | Status | Depends on | Completed deliverables |
 |---|---|---|---|
@@ -37,7 +43,7 @@ Dependency source: `/home/areion/projects/eterna-take-home/docs/execution/depend
 | T01 Database | DONE | T00 | Prisma schema + initial migration with 11 CHECK constraints, lazy pg-adapter client, bounded serializable retry helper, 25 real-PG + 6 unit tests; merge b801d3a verified; post-acceptance harness fix `fix/harness-prisma-generate` removes the manual `pnpm db:generate` prerequisite (unit 31) |
 | T02 Contracts | DONE | T00 | Strict Zod contracts + DTOs, exact integer-cent money with half-up tax, server-only env validation, HTTP/error/origin/cookie helpers with structural P2034→409, 36 unit tests; merge 3f6a1d1 verified (unit 67/67, integration 25/25, lint/typecheck/build 0) |
 | T03 Auth/seed | DONE | T01,T02 | BetterAuth 1.7.5 + bcryptjs 12 config, four explicit auth routes (register revokes its automatic session and issues no cookie), session guards, idempotent demo seed; 27 real-PG auth + 4 seed tests (integration 56/56), unit 67/67, lint/typecheck/build 0, seed CLI 0/0 + production refusal; merge 3e38219 verified |
-| T04 UI/auth | TODO | T03 | None |
+| T04 UI/auth | IN_PROGRESS | T03 | UI foundation/auth screens/session guards/client helper, 10 unit tests and the reviewer checklist pushed at `3ceb3c2` (tested `c3ae38b`); AMEND-T04-1 removes Playwright, retires the port-3100 lease and adds the Dockerfile/compose `app` service with the mise pins |
 | T05 Products API | TODO | T03 | None |
 | T06 Draft invoices | TODO | T05 | None |
 | T07 Lifecycle | TODO | T06 | None |
