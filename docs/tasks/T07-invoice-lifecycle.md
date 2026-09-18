@@ -1,6 +1,6 @@
 # T07 — Invoice lifecycle and atomic stock
 
-Status: REVIEW
+Status: DONE — coordinator-accepted and merged on `2026-09-18` (approved tip `183d900`, tested code `ce9c2ab`, tested merge `38d230f`; see `acceptance_records.T07` in the graph and "Coordinator acceptance" at the end of this card). The REVIEW text below is the worker's handoff at the frozen branch tip and is retained as the historical record.
 Owner: T07 worker (`task/T07-invoice-lifecycle`)
 Depends on: T06 (accepted and merged)
 Requirement IDs: V5, V6, V7, V8, V9, I4, A6, A7, N6
@@ -63,9 +63,20 @@ Uncommitted work: none (clean tree; `.env`, `generated/`, `.next` and `node_modu
 Contract notes: recorded in the section below for T09/T10. The self-review pass and its coordinator follow-ups are in the final section; the walkthrough is `agent_explanations/T07.md`.
 Blockers: none. T07's two decisions that needed a ruling (transition message, `postgres-test` lease) were resolved by the coordinator in this session; everything else followed the merged T06 contract.
 Push/PR status: pushed to `task/T07-invoice-lifecycle` as the commit that carries this line; verify with `git ls-remote --exit-code origin refs/heads/task/T07-invoice-lifecycle` and compare against the chat report. The review pass added `0910471` (walkthrough) and a docs-only card revision on top of the tested code `ce9c2ab`. No pull request and no main merge attempted or authorized.
-Next action: coordinator review, then acceptance and the `--no-ff` main merge on explicit user approval. T09 requires T07 accepted and T04 accepted; this worker relinquishes `lib/services/invoices.ts` only after acceptance.
-Coordinator acceptance / merge SHA: Pending — not requested, not authorized.
-Proposed central updates (coordinator-owned, not edited here): add a `T07` acceptance record to `docs/execution/dependency-graph.json` on merge and mark T07 DONE in the dashboard; the dependency guide's "T07 is eligible" wording can become "T07 accepted, T09 eligible behind T04". No plan/graph/skill/memory-bank file was modified by this worker.
+Next action: none — T07 is closed. The coordinator reviewed, accepted and merged it; T09 is eligible behind T04 + T07.
+Coordinator acceptance / merge SHA: `38d230f2e22764eb0c03164dadfa4118eb8a259d` (`--no-ff` of the pinned tip `183d900` over base `ae380fd`, no conflicts, merge tree byte-identical to the branch tree; approved-SHA ancestry verified and both task refs still at `183d900`). `task/T07-invoice-lifecycle` is frozen and retained at `183d900`.
+Proposed central updates (coordinator-owned, not edited here) — delivered on `main` with the acceptance: `acceptance_records.T07` was added to `docs/execution/dependency-graph.json`, the dashboard and memory bank mark T07 DONE, and the dependency guide now reads "T07 accepted, T09 eligible behind T04".
+
+## Coordinator acceptance (2026-09-18)
+
+Written on `main` after the merge as coordinator acceptance bookkeeping — the frozen task branch keeps its REVIEW-era text, so this section is the card's only DONE statement (the graph record is the authoritative one).
+
+- Provenance: every commit after the tested code `ce9c2ab` is docs/config only (`git diff --name-only ce9c2ab 183d900`: `agent_explanations/**`, `docs/**`, `.clinerules/**`, `AGENTS.md`, `.mcp.json`), and the code diff against base `ae380fd` is exactly `lib/services/invoices.ts`, the new `app/api/invoices/[id]/status/route.ts`, the new `tests/integration/invoice-lifecycle.test.ts` and the card — no shared contract, schema, migration, manifest or config input changed.
+- Integration: `git merge-base --is-ancestor ae380fd 183d900` held, and `git merge-tree --write-tree origin/main 183d900` produced a tree byte-identical to the branch tree with zero conflict reports, so nothing was hand-resolved.
+- Independent verification (the card's own review pass was a self-review that executed no tests): `.worktrees/T07-lifecycle-review` at `183d900` on real PostgreSQL under the `postgres-test` lease — install `--frozen-lockfile` 0, lint 0, typecheck 0, unit 79/79 (8 files), build 0 with the new `ƒ /api/invoices/[id]/status` route, integration 136/136 (6 files). Six reviewer-authored adversarial probes (never committed) passed 6/6 — 142/142 with the suite: the inclusive `1_000_000` restore bound and its one-unit-above `409 STOCK_OVERFLOW`, a first-line failure at issue rolling back both products and the invoice, a stringified version as `422 fields.version`, an issue racing a draft cancellation with exactly one winner, and a foreign Origin as `403 ORIGIN_REJECTED` with no state change.
+- Merged-revision verification at `38d230f` in the coordinator checkout: install/lint/typecheck 0, unit 79/79, build 0, integration 136/136.
+- Rulings on the nine self-review follow-ups (full text in the graph record): ratify `409 STOCK_OVERFLOW` as message-only; keep the `409 INVOICE_NOT_EDITABLE` + `Invoice status cannot change from <FROM> to <TO>` contract; accept the race-loser tolerance across `VERSION_CONFLICT`/`INVOICE_NOT_EDITABLE`/`TRANSACTION_CONFLICT` (T09 uses generic reload copy for any 409); confirm the soft-deleted-product 404 at issue and the live-name `INSUFFICIENT_STOCK` as T06 parity; accept the duplicated `1_000_000` bound and the `P2034`-only retry (`40P01` would surface as a sanitized 500) as disclosed limitations for T10; accept `assertTransition` integration coverage and the duplicated fixtures between the T06/T07 suites.
+- Verdict: no defect found, no rework branch, and no post-approval commit on the frozen branch.
 
 ## Contract notes (for T09/T10)
 
