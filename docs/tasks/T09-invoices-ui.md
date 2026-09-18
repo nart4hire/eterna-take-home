@@ -160,4 +160,46 @@ Contract notes for T10: routes are `/invoices` (status filter `?status=`, `?page
 Blockers: none.
 Push/PR status: `task/T09-invoices-ui` was pushed and verified at `252bec3` (tested implementation `05d503f`). This review addendum and `agent_explanations/T09.md` are a further documentation-only commit on the same branch; it is pushed after that commit, the resulting tip is verified against the remote, and it is reported in the assignment channel rather than in another self-referential card commit.
 Next action: coordinator review and acceptance; T10 (Swagger, README, 36-ID ledger) stays gated on the accepted merge of this task. No successor is started automatically and `main` is never touched from this branch.
+
+## Rework after the reviewer's browser pass (2026-09-18)
+
+**O13 — browser-confirmed defect, fixed.** The reviewer's browser pass reported React's "In HTML, `<form>`
+cannot be a descendant of `<form>`" hydration error on `/invoices/new` while checking row C2 (snapshot
+retention after deleting a product). Root cause: `components/product-picker.tsx` rendered its search control
+as a `<form>` while `components/invoice-form.tsx:286` wraps the picker in the invoice `<form>`, so
+`/invoices/new` and every draft `/invoices/[id]/edit` response carried two `<form>` start tags with the second
+nested (`grep -o '<form' | wc -l` = 2 on the served HTML). HTML parsing ignores a nested form start tag, so the
+browser DOM and React's client tree diverged at hydration. It is a static screen defect, unrelated to the
+product-delete flow that surfaced it, and invisible to both the worker's 105-check matrix and the reviewer's
+42-check matrix, which passed at `08b52a7` — it only manifests in a browser.
+
+**Fix — `413151f`.** The picker owns no form now: the search row is a `div role="search"` with a
+`type="button"` "Search catalogue" control, and the input's `onKeyDown` intercepts Enter and runs the search —
+without that interception Enter would have submitted the enclosing invoice form once the inner form was gone.
+Search, Clear, disabled and `aria-busy` behaviour are unchanged; the redundant `name="search"` was dropped
+because nothing submits it. No contract, schema, style, shared component or test file was touched;
+`components/product-picker.tsx` is T09-owned.
+
+**Verification at `413151f`** (worktree `.worktrees/T09-invoices-ui-rework`, branch `task/T09-invoices-ui`):
+`pnpm install --frozen-lockfile` 0; `pnpm test:unit` 79/79 (8 files); `pnpm test:integration` 136/136 (6 files on
+real PostgreSQL under the `postgres-test` lease); `pnpm lint` 0; `pnpm typecheck` 0; `pnpm build` 0. The
+reviewer's live matrix re-ran against a `next dev` on the leased port 3100 over the review database
+`stockflow_t09` — **42/42**, including three new structural checks that fail before this commit and pass after
+it: `/invoices/new` serves exactly one `<form>` while keeping the picker input and search control, and a draft
+`/invoices/[id]/edit` serves exactly one `<form>`.
+
+**O14 — reviewer observation, not a defect (recorded for T10, no change made).** An unknown, malformed or
+foreign invoice id answers **HTTP 200** with the not-found UI rather than 404, because `notFound()` runs after
+the RSC shell has streamed; it reproduces in dev *and* in `next start` over the production build, while a
+genuinely unmatched route (e.g. `/products/nope`) is a real 404. No invoice data leaks (invoice number and
+customer absent for a foreign owner) and a signed-out visitor still gets a true 307 to `/login`.
+
+**Open items unchanged, none of them a blocker:** O1 (uncontrolled status `<select>` keeps its old selection
+after Clear; the fix is `key={status ?? "all"}`), O2 ("Draft version N" also shown on issued invoices), O3
+(redundant `?status=` on "All statuses"), O4 (no automated coverage of component JavaScript), O10 (no explicit
+retry button on the create form's transport failure).
+
+**Push status.** `413151f` plus this documentation commit are pushed to `origin/task/T09-invoices-ui`; the
+branch stays unmerged and `main` is untouched. REVIEW is not DONE — coordinator acceptance and the merge
+remain outstanding.
 Coordinator acceptance / merge SHA: Pending.
