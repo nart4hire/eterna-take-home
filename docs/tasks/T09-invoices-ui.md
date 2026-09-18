@@ -9,6 +9,8 @@ Accepted dependency revisions: Not recorded
 
 > **Requirement amendment (user, 2026-09-18):** Playwright and the browser-suite layer were removed from the application (decision record on T04's card), so this card no longer owns `tests/e2e/invoices.spec.ts` and no browser phase exists in the test runner. UI verification is manual: the reviewer checklist published on T04's card is extended here with the invoice rows, while automated coverage stays on the API and regression side (T06/T07 integration suites plus lint/typecheck/build). T09 — together with T08 — is additionally authorized to touch the container files (`Dockerfile`, `.dockerignore`, the compose `app` service) where the container work needs changes for its screens.
 
+> **Shell contract from T08's accepted rework (coordinator, AMEND-T08-1, 2026-09-18):** the dashboard layout highlights the active section through `components/nav-link.tsx` — a T04-owned client component that resolves the path with `usePathname()` and sets `aria-current="page"` with an accent background. Render the Invoices navigation entry with it (do not edit the component or the layout from this task), and do not add a link to developer documentation: API docs are delivered separately from the client app (spec at `GET /api/openapi.json`, standalone viewer, README-documented URL).
+
 ## Scope and ownership
 
 Own T09 files in `/home/areion/projects/eterna-take-home/docs/execution/dependency-graph.json` and this card. Follow `/home/areion/projects/eterna-take-home/.cline/skills/implement-task-card/SKILL.md`. Read frontend contracts and invoice snapshot/state rules. No shared UI/API/schema/style edits. ProductPicker belongs here; independent of T08 product forms. Database-backed suites still serialize on the shared test database.

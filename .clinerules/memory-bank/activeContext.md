@@ -1,12 +1,24 @@
 # Active Context
 
-**Canonical status (coordinator, 2026-09-18 — trust this block over the dated sections below).** T00–T06
+**Canonical status (coordinator, 2026-09-18 — trust this block over the dated sections below).** T00–T08
 are DONE: implemented, accepted, merged and re-verified, with per-task tips and merge SHAs in the graph's
 `acceptance_records`. **T04 is closed**: accepted and merged at `e30b194` (approved tip `e22cefc`, tested
 code `f9f3bb9`), its card header now reads DONE, and its four open review questions — including the
 committed `.mcp.json` and the `next-dev` lease — were ruled on by the T04-resolution commit recorded in
-the graph's `post_acceptance_fixes`. **T07 (invoice lifecycle) is accepted and merged at `38d230f`** (approved tip `183d900`, tested code `ce9c2ab`), so T09 is eligible behind T04 + T07; T08 (products UI) has an in-progress worker branch on origin that is not accepted, and T10 waits on T08/T09. Dated "Next:" or
+the graph's `post_acceptance_fixes`. **T07 (invoice lifecycle) is accepted and merged at `38d230f`** (approved tip `183d900`, tested code `ce9c2ab`) and **T08 (products UI) is accepted and merged at `15d17a7`** (approved tip `10e1f2e`, tested code `c0ff16f` plus the user-directed rework `83fce4d`), so T09 (invoices UI) is the only remaining implementation task — eligible behind T04 + T07 — and T10 waits on T09 alone. Dated "Next:" or
 "Pending" paragraphs further down are the record of the moment they were written, not the current state.
+
+## T08 accepted and merged (coordinator, 2026-09-18)
+
+T08 (products UI) was accepted and merged after the user worked its browser checklist and signed it off: approved tip `10e1f2e` (local and origin agree, and the branch is frozen there), tested code `c0ff16f` for the original screens plus the user-directed rework `83fce4d`, integration merge `ec89ccb`, tested acceptance merge `15d17a718195ac815493c6b3f314b8f991d0b781` (`--no-ff` over base `af6df91`, no conflicts — `git merge-tree --write-tree` predicted a clean merge, the merge matched it, and the merged tree `2ea72a88` is byte-identical to the branch tree, so nothing was hand-resolved). Full record: `acceptance_records.T08` in the graph.
+
+**User rework (AMEND-T08-1, 2026-09-18).** The check-off produced exactly two items, both fixed in `83fce4d`: (1) the shell now shows which section you are in — the new `components/nav-link.tsx` resolves `usePathname()` and marks the active link with an accent background plus `aria-current="page"`, rendered for Products and Invoices by the T04-owned `app/(dashboard)/layout.tsx`, because the user "found myself clicking the products button a few times without realizing I was already in products"; (2) the shell's `API docs` link is gone, and T10's card plus `implementation_plan.md` now require the Swagger surface to stay separate from the client app ("the client is not the maintainer so that will only be clutter to them") — the spec stays a machine-readable `GET /api/openapi.json`, the viewer is standalone and unlinked, and the README documents its URL. `components/nav-link.tsx` joins T04's owns as a shared shell primitive, and T09 inherits it and must not re-add a docs link.
+
+Verified on the integrated revision `ec89ccb` in the reviewer worktree with a dedicated review database, and repeated on the merged revision `15d17a7` in the coordinator checkout: install `--frozen-lockfile` 0, unit 79/79 (8 files), integration 136/136 (6 files; 25 T01 + 27 auth + 4 seed + 25 products + 30 invoices + 25 lifecycle) on real PostgreSQL under the `postgres-test` lease, lint 0, typecheck 0, build 0 with `/products`, `/products/new` and `/products/[id]/edit` beside the five API route families, the live HTTP matrix 67/67, and a reviewer-authored rendered-navigation check 12/12 on a leased `next dev` port 3100 (Products highlighted on all three product routes, Invoices muted, no `/docs` link in any rendered page). Disclosed fixture artifact: the first integrated matrix run failed one check (`$7.49`) because the user's browser pass had edited `DEMO-001` to 769 cents and soft-deleted `DEMO-002` while the idempotent seed never overwrites existing rows; restoring the documented seed values produced 67/67, and no code, contract or test was changed to make a check pass.
+
+Open, cosmetic, carried to T09/T10: review observations O1–O10 (sticky `?created=1`/`?updated=1` notices, a second list-URL builder, streaming 404/redirect status codes, `zod` reachable from the client bundle through `lib/money`, dialog close timing, notices surviving a search navigation, the shared `EMPTY_VALUES` object, the uncommitted matrix script, no dashboard-level `not-found`). No browser automation exists by AMEND-T04-1, so the interaction/visual rows are reviewer-checklist results — the user signed them off — and T10 records them per requirement ID.
+
+Next: T09 (invoices UI) is the only remaining implementation task and is eligible behind T04 + T07; T10 waits on T09 alone.
 
 ## T07 accepted and merged (coordinator, 2026-09-18)
 
