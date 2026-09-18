@@ -39,9 +39,8 @@ export async function seed(): Promise<void> {
   const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString }) });
   try {
     const existing = await prisma.user.findUnique({ where: { email: DEMO_USER.email }, include: { accounts: true } });
-    let userId = existing?.id;
+    const userId = existing?.id ?? randomUUID();
     if (!existing) {
-      userId = randomUUID();
       await prisma.user.create({
         data: {
           id: userId,
@@ -60,9 +59,9 @@ export async function seed(): Promise<void> {
     }
     for (const product of DEMO_PRODUCTS) {
       await prisma.product.upsert({
-        where: { userId_sku: { userId: userId!, sku: product.sku } },
+        where: { userId_sku: { userId, sku: product.sku } },
         update: {},
-        create: { userId: userId!, ...product },
+        create: { userId, ...product },
       });
     }
   } finally {
