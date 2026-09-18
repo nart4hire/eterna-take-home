@@ -66,3 +66,13 @@ Accepted and merged on `main` by the coordinator after independent verification.
 - **Accepted limitation (user decision, "accept as-is"):** `generated/prisma` is git-ignored and only the integration path runs `prisma generate`, so a clean checkout fails `pnpm test unit` (suite load error) and `pnpm typecheck` (TS2307) until `pnpm db:generate` is run. Documented as a prerequisite in `README.md` and the memory bank rather than fixed in this task; the runner's unit fast-path (`scripts/test.ts`, T00-owned) remains unchanged. Successors that integrate this merge must run `pnpm db:generate` before unit/typecheck, and T02 must revalidate accordingly.
 - **Not covered:** browser/E2E suites (none exist yet; T08–T10 scope).
 
+## Post-acceptance fix: self-generating Prisma client
+
+The accepted limitation above no longer applies to the standard gates. Branch `fix/harness-prisma-generate` (red tests `3745418`, implementation `ae26c77`) makes every local gate generate the client itself:
+
+- `scripts/test.ts` — the unit fast path runs `prisma generate` before vitest (offline, so the unit path stays Docker-free).
+- `package.json` — `test:unit` → `tsx scripts/test.ts unit`; `typecheck` → `prisma generate && next typegen && tsc --noEmit`; `build` → `prisma generate && next build`.
+- New red-first harness tests `T00-H21..H23` in `tests/unit/test-harness.test.ts` pin all three (unit suite 28 → 31 tests).
+
+Coordinator-authored amendment to T00-owned paths (frozen `task/T00-toolchain` and `task/T01-database` untouched), explicitly user-approved with no separate reviewer required. Evidence: clean-checkout simulation (`generated/` moved aside, `tsconfig.tsbuildinfo` cleared) with `pnpm test unit` 31/31, `pnpm typecheck` 0 and `pnpm build` 0; a stricter per-gate proof showing `typecheck` and `build` each print `Generated Prisma Client` when `generated/` is absent immediately beforehand; `pnpm test integration` 25/25; `pnpm lint` 0. Only raw `pnpm exec vitest` / `tsc --noEmit` invocations still need a manual `pnpm db:generate`.
+

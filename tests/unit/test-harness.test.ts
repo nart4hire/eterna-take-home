@@ -219,3 +219,33 @@ describe("HARNESS T00: schema-independent reset helper", () => {
   });
 });
 
+describe("HARNESS FIX: every local gate generates the Prisma client itself", () => {
+  const pkg = JSON.parse(
+    readFileSync(path.join(WT_ROOT, "package.json"), "utf8"),
+  ) as { scripts: Record<string, string> };
+
+  it("T00-H21 the unit fast path generates the client before vitest", () => {
+    const runner = readFileSync(path.join(WT_ROOT, "scripts/test.ts"), "utf8");
+    const fastPath =
+      /if \(suites\.every\(suite => suite === "unit"\)\)[\s\S]*?\n  \}/.exec(
+        runner,
+      );
+    expect(fastPath, "unit fast path not found in scripts/test.ts").not.toBeNull();
+    const block = fastPath![0];
+    expect(block).toMatch(/\["db:generate"\]/);
+    expect(block.indexOf("db:generate")).toBeLessThan(block.indexOf("vitest"));
+  });
+
+  it("T00-H22 `pnpm test:unit` goes through the runner so it generates too", () => {
+    expect(pkg.scripts["test:unit"]).toBe("tsx scripts/test.ts unit");
+  });
+
+  it("T00-H23 typecheck and build generate the client themselves", () => {
+    for (const script of ["typecheck", "build"]) {
+      expect(pkg.scripts[script], `${script} must generate first`).toMatch(
+        /^prisma generate && /,
+      );
+    }
+  });
+});
+

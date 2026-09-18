@@ -38,6 +38,7 @@ export async function runTests(subset?: Subset): Promise<void> {
   const env: NodeJS.ProcessEnv = { ...process.env };
   config({ path: path.join(root, ".env"), processEnv: env, quiet: true });
   if (suites.every(suite => suite === "unit")) {
+    runCommand("pnpm", ["db:generate"], root, env); // offline; keeps the unit path Docker-free but self-sufficient
     runCommand("pnpm", ["exec", "vitest", "run", "tests/unit"], root, env);
     return;
   }
