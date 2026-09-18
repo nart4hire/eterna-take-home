@@ -1,6 +1,6 @@
 # T01 — PostgreSQL schema and persistence
 
-Status: REVIEW
+Status: DONE (coordinator-accepted and merged on main; frozen task branch retained at the REVIEW tip)
 Owner: T01 worker (dispatch "T001" → T01, implementation + task-branch push authorized)
 Depends on: T00
 Requirement IDs: A1, I3, I4, V6, N1
@@ -33,7 +33,7 @@ Under the granted postgres-test lease (localhost:5433/stockflow_test tmpfs):
 
 - Red evidence: minimal deployed-tables test failed before any T01 file existed; 17/21 constraint cases red before CHECK constraints existed; retry unit tests 2/6 red (single attempt, no `P2034` retry) before the loop was implemented; import/config failures never counted as red.
 - `PRISMA_USER_CONSENT…=… pnpm exec prisma migrate reset --force` (user consented in chat to resetting localhost:5433/stockflow_test) → 0; schema deployed to an empty database via committed migration history, never `db push` or post-hoc DDL. The two empty, documented T00 smoke tables (`reset_check_parent/child`) were dropped first inside a transaction after row-count/identity checks.
-- `pnpm test unit` → 0 (28 tests, 3 files: 20 harness + 2 env + 6 transaction).
+- `pnpm test unit` → 0 (28 tests, 3 files: 20 harness + 2 env + 6 transaction) **after `pnpm db:generate`**. Correction from coordinator acceptance: the unit-only harness path returns before client generation, so on a clean checkout this suite fails to resolve `@/generated/prisma/client`. The earlier green reading was taken in a worktree where the client had already been generated; the command is not reproducible on a fresh clone without the generate step. See "Coordinator acceptance and merge".
 - `sg docker -c 'pnpm test integration'` → 0 (25 tests: harness preflight, client generation, migrate deploy, FK-order reset between files, real-PG assertions).
 - `pnpm lint` → 0; `pnpm typecheck` → 0; `pnpm build` → 0 (log artifacts in /tmp are disposable; commands/results recorded here).
 - Interim failures were honestly recorded: 17-fail red baseline, mock-queue contamination (`clearAllMocks` vs `mockReset`) corrected, `Prisma.dmmf` absent from generated prisma-client output (replaced with information_schema comparisons), `next typegen` typecheck fixed, typecheck/lint/build all rerun after final edits. Committed in two reviewed commits (`46f9d1b`, `eafc78c`); no T02/shared files touched.
@@ -53,4 +53,16 @@ Contract notes: T01 exposes `withSerializableRetry<T>(work: (tx: Prisma.Transact
 Blockers: none.
 Push/PR status: task branch pushed after main integration (see chat for pushed SHA); main untouched.
 Next action: Coordinator review/acceptance/merge; after DONE, T03 becomes eligible only when T02 is also accepted.
-Coordinator acceptance / merge SHA: Pending.
+Coordinator acceptance / merge SHA: ACCEPTED — see "Coordinator acceptance and merge" below (merge `b801d3ae93e7cbca1e4f659bd17e375609fcf7de`).
+
+## Coordinator acceptance and merge
+
+Accepted and merged on `main` by the coordinator after independent verification.
+
+- **Approved task tip:** `a19d7c8edbe260a7086e101bd34f06e6d2f9452c` (local `task/T01-database` and `origin/task/T01-database` agreed; frozen unchanged afterwards).
+- **Merge:** `git merge --no-ff a19d7c8… -m "Merge task/T01-database: T01 accepted"` → exit 0, no conflicts. **Tested merge SHA `b801d3ae93e7cbca1e4f659bd17e375609fcf7de`** (parents `237b01b` + `a19d7c8`); approved-SHA ancestry verified.
+- **Review audit:** all 9 changed files fall inside T01's graph-owned paths (no manifest/lockfile/shared/T02 files); all 11 CHECK constraints and 6 FK delete rules present in the pinned migration; no secrets; card claims matched the code.
+- **Verification on the merged revision:** `pnpm test integration` 25/25 on real PostgreSQL (self-generates the client and runs `migrate deploy`), `pnpm lint` 0, `pnpm build` 0; `pnpm test unit` 28/28 and `pnpm typecheck` 0 after `pnpm db:generate`.
+- **Accepted limitation (user decision, "accept as-is"):** `generated/prisma` is git-ignored and only the integration path runs `prisma generate`, so a clean checkout fails `pnpm test unit` (suite load error) and `pnpm typecheck` (TS2307) until `pnpm db:generate` is run. Documented as a prerequisite in `README.md` and the memory bank rather than fixed in this task; the runner's unit fast-path (`scripts/test.ts`, T00-owned) remains unchanged. Successors that integrate this merge must run `pnpm db:generate` before unit/typecheck, and T02 must revalidate accordingly.
+- **Not covered:** browser/E2E suites (none exist yet; T08–T10 scope).
+

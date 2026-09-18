@@ -12,6 +12,13 @@
       "tested_merge_sha": "997874c5325a53c26d68658ce1bfb3a1f466282e",
       "branch": "task/T00-toolchain",
       "verification": "Coordinator: frozen install, 22 unit tests, lint, typecheck and build exit 0. User approved merge; verify merge ancestry on fetched origin/main before dispatch. Integration/E2E deferred. Retain task branch unchanged."
+    },
+    "T01": {
+      "status": "DONE",
+      "approved_task_sha": "a19d7c8edbe260a7086e101bd34f06e6d2f9452c",
+      "tested_merge_sha": "b801d3ae93e7cbca1e4f659bd17e375609fcf7de",
+      "branch": "task/T01-database",
+      "verification": "Coordinator merged pinned tip a19d7c8 with --no-ff (no conflicts) into b801d3a over base 237b01b; approved-SHA ancestry verified. Verified on the merged revision: pnpm test integration 25/25 against real PostgreSQL (self-generates client + migrate deploy), pnpm lint 0, pnpm build 0; pnpm test unit 28/28 and pnpm typecheck 0 after pnpm db:generate. Accepted limitation (user-approved): generated/prisma is git-ignored and only the integration path runs prisma generate, so a clean checkout must run pnpm db:generate before pnpm test unit / pnpm typecheck. Frozen branch retained unchanged at a19d7c8; E2E still deferred."
     }
   },
   "worktree_policy": {
