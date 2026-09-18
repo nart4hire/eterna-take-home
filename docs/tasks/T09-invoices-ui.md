@@ -227,3 +227,5 @@ button cannot be exercised without a browser, so they rest on the source semanti
 and remain browser rows. O4 therefore stays open as a coverage disclosure, and O5–O9, O11–O12 remain recorded
 notes; O13 is fixed in `413151f` and O14 is recorded for T10.
 Coordinator acceptance / merge SHA: accepted and merged at `b22d2cb19ce8d46ffc02168770839ab788334d8c` over base `7bd5f68` (`--no-ff`, no conflicts, merge tree byte-identical to the branch tree) from approved tip `b9c372c` and tested code `b3593a6`. The branch is frozen at `b9c372c`; later fixes require a newly authorized rework branch.
+
+**Post-acceptance browser confirmation (user, 2026-09-18, merged revision):** the two rows the reviewer could not execute were checked in a browser and both are OK — O1 (after Clear and Back/Forward the status dropdown matches the rows) and O10 (a failed create says nothing was saved and offers a working "Try again" that keeps the typed values), plus the O13 fix (one form per invoice screen). No disclosed limitation remains for O1/O10 or O13; O4 stays a coverage disclosure and O14 is recorded for T10.
