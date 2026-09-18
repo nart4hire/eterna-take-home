@@ -1,11 +1,11 @@
 # T09 — Invoices UI
 
-Status: TODO
-Owner: Unassigned
+Status: IN_PROGRESS
+Owner: T09 worker (single agent, 2026-09-18)
 Depends on: T04, T07
 Requirement IDs: F3, F4, F5, F6
-Branch / worktree / base SHA: Not created
-Accepted dependency revisions: Not recorded
+Branch / worktree / base SHA: branch `task/T09-invoices-ui` in worktree `/home/areion/projects/eterna-take-home/.worktrees/T09-invoices-ui`, created from verified `origin/main` `7bd5f68` (`git worktree add -b`, clean tree, no T09 branch or worktree existed)
+Accepted dependency revisions: T04 tested code `f9f3bb93`, approved tip `e22cefc`, tested merge `e30b194`; T07 tested code `ce9c2ab`, approved tip `183d900`, tested merge `38d230f`; T08 (shell contract, not a declared dependency) rework `83fce4d`, tested merge `15d17a7`. All three merges verified as ancestors of the fetched `origin/main` with `git merge-base --is-ancestor` before branching.
 
 > **Requirement amendment (user, 2026-09-18):** Playwright and the browser-suite layer were removed from the application (decision record on T04's card), so this card no longer owns `tests/e2e/invoices.spec.ts` and no browser phase exists in the test runner. UI verification is manual: the reviewer checklist published on T04's card is extended here with the invoice rows, while automated coverage stays on the API and regression side (T06/T07 integration suites plus lint/typecheck/build). T09 — together with T08 — is additionally authorized to touch the container files (`Dockerfile`, `.dockerignore`, the compose `app` service) where the container work needs changes for its screens.
 
@@ -22,26 +22,120 @@ Own T09 files in `/home/areion/projects/eterna-take-home/docs/execution/dependen
 - List/filter/pagination/detail expose snapshots/totals; legal issue/paid/cancel actions only, pending disabled, 409 handled with refresh. Separate invoices exercise paid/cancelled terminal paths.
 - Every invoices page rejects fresh/expired/revoked visitors; own detail/edit only, draft edit guard. API errors/loading show useful retry, not blank content — reviewer-checklist items, since no browser suite exists.
 
+**TDD position at this revision (recorded because it is a deliberate deviation, as T08 did).** This card asks for API/integration cases "where T06/T07 do not already cover them". The coverage audit performed before coding found no gap: T06's 30 invoice cases already cover create with server-computed snapshots/totals (V2/V3), snapshot retention on draft edits (V4), overstock create/edit rejection naming the product (V5), draft-only item replacement with version guards (V9), list newest-first under a status filter plus complete ordered detail and 422 on bad pagination/status (V10), and 401/403/404/422/N6 behaviour; T07's 25 lifecycle cases cover the full legal/terminal transition matrix, atomic deduction and restore, repeated-action 409s and the race cases (V6/V7/V8). Every endpoint the invoice screens call is therefore already test-backed. No test path is graph-owned for T09 (`tests/unit/**` and `tests/integration/**` belong to T00/T01/T03/T05/T06/T07), and AMEND-T04-1 removed the browser layer, so the rendered screens are verified by the reviewer checklist rows below. Instead of new unit tests this task adds an executable **live HTTP matrix** (Validation section) that drives the real pages against a real PostgreSQL database, so the F3/F4/F5 claims rest on more than a click-through. No test was weakened, skipped or faked, and no placeholder implementation was introduced.
+
 ## Deliverables
 
 | Deliverable | State | Evidence | Verified revision |
 |---|---|---|---|
-| Invoice form/edit and paginated product picker | NOT_STARTED | Not executed | None |
-| List/detail/status actions | NOT_STARTED | Not executed | None |
-| Invoices reviewer verification checklist rows | NOT_STARTED | Extends T04's manual checklist (two-line creation, live vs saved totals, picker beyond the first 100, stock errors, status filter/detail/actions); no browser suite exists | None |
+| Invoice form/edit and paginated product picker | VERIFIED | `components/invoice-form.tsx` (create and edit modes; metadata shown read-only when editing because only `{version, items}` may be replaced; per-line quantity editing with line totals; live preview built by the shared `calculateTotals`, labelled provisional; server `fields` rendered inline on `items.N.quantity`/`items.N.productId`; `VERSION_CONFLICT` reloads the saved draft, `INVOICE_NOT_EDITABLE`/404-without-fields point at the invoice, item 404s stay inline; pending disables every control; values preserved with a retry) · `components/product-picker.tsx` (client-side paginated `GET /api/products` search at 20 per page with previous/next paging past the first 100 products, add/added state, empty, failure and retry states) · `app/(dashboard)/invoices/new/page.tsx` (server-side `TAX_RATE_BPS` and server-computed UTC issue-date default) · `app/(dashboard)/invoices/[id]/edit/page.tsx` (own session check, validated path id, draft-only guard) | `05d503f` |
+| List/detail/status actions | VERIFIED | `app/(dashboard)/invoices/page.tsx` (own session check, strict `invoiceListSchema` query parsing, empty `?status=` normalised to all statuses, out-of-range page clamp) · `components/invoice-list.tsx` (GET-form status filter that survives without JavaScript, status badges with text, saved totals, shared `Pagination` reuse, separate filtered and unfiltered empty states) · `app/(dashboard)/invoices/[id]/page.tsx` (snapshotted line names/prices/quantities, subtotal/tax/total from the server, per-status explanation, draft-only edit link) · `components/invoice-actions.tsx` (only legal transitions, each behind a confirmation naming the stock consequence, pending disables every control, 409 refreshes the route, terminal states render no actions instead of dead buttons) | `05d503f` |
+| Invoices reviewer verification checklist rows | VERIFIED (rows published; the browser pass itself belongs to the reviewer) | The section "Invoices reviewer verification checklist rows" below extends T04's checklist section C with the invoice rows, and the implementer's supporting execution evidence is the 105/105 live HTTP matrix recorded in Validation. No browser suite exists (AMEND-T04-1) and no Chromium can run in this environment (`libnspr4` missing, no root), so the interactive rows stay reviewer-checklist items | `05d503f` |
+
+## Invoices reviewer verification checklist rows (extends T04's section C; F3, F4, F5, F6)
+
+No browser suite exists (AMEND-T04-1) and no Chromium can run in this environment, so these rows are the reviewer's instrument. They assume the reviewer's own signed-in workspace with at least one product; a bulk helper for the "past the first 100" row is in item E.
+
+**A. Creation and live totals (F3)**
+
+- [ ] `/invoices` shows the heading, the "New invoice" button and the status filter.
+- [ ] `/invoices/new` opens with both dates defaulted to today; the picker lists the catalogue and reports "Showing 1–20 of N matching products".
+- [ ] Searching the picker by product name and by SKU narrows the list; Clear restores the full catalogue.
+- [ ] The picker's Next/Previous buttons walk the pages, and with more than 100 products a later page still shows rows (the address and the API are unchanged — paging is client state).
+- [ ] A row already on the invoice reads "Added" and cannot be added twice; its "Add line" button is disabled.
+- [ ] Adding a second product gives two lines; changing a quantity updates that line's total and the subtotal, tax (11%) and total immediately, without a request.
+- [ ] Saving lands on the new draft's detail page, and the saved subtotal/tax/total equal what the preview showed (the preview uses the same integer-cent helper the server uses).
+- [ ] Creating with an empty customer name, an empty due date or no lines reports the problem next to the field and does not navigate; the typed values stay.
+- [ ] A quantity above the product's stock is rejected by the server with the message naming the product next to that line, and nothing is created.
+- [ ] With no products at all, the picker says so and links to "/products/new".
+
+**B. List and status filter (F4)**
+
+- [ ] The list shows the draft's number, customer, issue date, due date, status badge, total and a View link.
+- [ ] The status filter narrows to Draft / Issued / Paid / Cancelled, keeps the choice in the address (`?status=INVOICE_STATUS`) and Clear restores every invoice.
+- [ ] An empty result explains itself ("No <status> invoices." plus Clear the filter) instead of showing an empty table.
+- [ ] Entering an unknown status in the address shows the "Those search parameters are not valid" state with a reset link, not a blank page.
+
+**C. Detail and status actions (F4)**
+
+- [ ] The detail page shows the snapshotted product names, unit prices, quantities and line totals plus subtotal, tax and total, the notes, and a sentence explaining what the current status means for stock.
+- [ ] Renaming, repricing or deleting one of the products in `/products` and reloading the invoice does not change its saved lines or totals (snapshots).
+- [ ] A draft offers only "Issue invoice" and "Cancel draft"; each opens a confirmation that spells out the stock effect.
+- [ ] While a transition runs the confirm button reads "Working…" and every control is disabled, so a second click cannot submit (F6).
+- [ ] After issuing: the status becomes Issued, the product's stock in `/products` drops by the line quantities, and the actions become "Mark as paid" and "Cancel invoice"; the draft edit link is gone.
+- [ ] Opening `/invoices/<issued-id>/edit` lands on the detail page instead of showing an editable form.
+- [ ] After cancelling an issued invoice the stock returns exactly once and no further action is offered; a paid or cancelled invoice shows the terminal note and no buttons.
+- [ ] Two tabs on one draft: saving in the second tab reports "This draft changed in another session" and shows the reloaded saved lines; issuing in the other tab and then saving reports that the invoice cannot be edited and links to it.
+- [ ] Issuing an invoice whose line references a product deleted in the meantime reports the problem and offers "Edit the draft lines" to remove it.
+- [ ] With the API unreachable (browser offline), saving shows a network message with a retry and keeps the typed values.
+
+**D. Session, shell and boundaries (F5, F6)**
+
+- [ ] Signed out, `/invoices`, `/invoices/new`, an invoice detail and an invoice edit URL all redirect to `/login` (the pages answer 307 before rendering anything).
+- [ ] Signing out and then using Back does not show private content: the next API call answers 401 and the client navigates to `/login`.
+- [ ] Another user's cookie (or a deleted session row) redirects the same way instead of rendering someone else's invoice.
+- [ ] The Invoices navigation entry is highlighted on all four invoice routes and Products is not; nothing in the shell links to developer documentation.
+- [ ] Navigating between invoice screens shows the dashboard loading skeleton, and a failing page shows the dashboard error boundary's retry rather than a blank page. The boundaries no current screen can trigger stay "not exercisable" (T10 records that).
+
+**E. Re-running the implementer's evidence**
+
+```sh
+# gates (from the task worktree; the integration subset needs the postgres-test lease)
+pnpm install --frozen-lockfile
+pnpm test:unit
+pnpm lint
+pnpm typecheck
+pnpm build
+sg docker -c "cd <worktree> && pnpm test:integration"
+
+# the live HTTP matrix used for this revision (script kept byte-identical in /tmp/t09-live-matrix.sh)
+# it registers its own user against a leased dev server, creates fixtures, then checks pages:
+BASE=http://localhost:3102; ORIGIN=$BASE; JAR=/tmp/t09-cookies.txt; OUT=/tmp/t09-body.html
+
+# bulk helper for the "past the first 100 products" row (100 products in the signed-in workspace)
+for n in $(seq 1 100); do curl -s -o /dev/null -X POST "$BASE/api/products" -b "$JAR" \
+  -H "origin: $ORIGIN" -H 'content-type: application/json' \
+  -d "{\"sku\":\"BULK$(printf '%03d' "$n")\",\"name\":\"Bulk Product $(printf '%03d' "$n")\",\"unitPrice\":999,\"quantityOnHand\":10}"; done
+```
 
 ## Validation
 
-Acquire the postgres-test lease; run the API/regression suites the screens depend on plus lint/typecheck/build, and extend the container rehearsal if this task changed the container files. Verify displayed totals against the actual server response manually; record checklist results with the reviewer's browser and revision. Do not change stock/status rules to simplify UI.
+*(Original instruction: acquire the postgres-test lease; run the API/regression suites the screens depend on plus lint/typecheck/build, and extend the container rehearsal if this task changed the container files; verify displayed totals against the actual server response manually; record checklist results with the reviewer's browser and revision; do not change stock/status rules to simplify UI.)*
+
+**Recorded results at `05d503f`** — worktree `/home/areion/projects/eterna-take-home/.worktrees/T09-invoices-ui`, branch `task/T09-invoices-ui`, base `origin/main` `7bd5f68`. The explicit integration pull reported "Already up to date", so `origin/main` had not advanced and the block below is the post-integration run.
+
+| Gate | Command | Result |
+|---|---|---|
+| Frozen install | `pnpm install --frozen-lockfile` | exit 0 |
+| Unit | `pnpm test:unit` | 8 files, 79/79, exit 0 (pre-existing suite; no test path is graph-owned for T09) |
+| Integration (real PostgreSQL, `postgres-test` lease) | `sg docker -c "cd <worktree> && pnpm test:integration"` | 6 files, 136/136, exit 0 (25 T01 + 27 auth + 4 seed + 25 products + 30 invoices + 25 lifecycle) |
+| Lint | `pnpm lint` | exit 0 |
+| Typecheck | `pnpm typecheck` | exit 0 |
+| Build | `pnpm build` | exit 0; the route table gained `ƒ /invoices`, `ƒ /invoices/[id]`, `ƒ /invoices/[id]/edit`, `ƒ /invoices/new` beside the five API route families |
+
+**Live HTTP matrix — 105/105 at `05d503f`.** Driven against a leased `next dev` on port 3102 (never the primary checkout; the primary's own dev server on 3000 was left running and untouched) with the worktree's own database, so no demo or shared test data was disturbed:
+
+- **leases and databases.** The `next-dev` lease was taken on port 3102 for this run and released afterwards (the port no longer listens); `postgres-test` was used only for the integration suite. The review data lives in a dedicated `stockflow_t09` database created inside the already-running dev PostgreSQL container, migrated with `prisma migrate deploy` and seeded with the idempotent demo seed (`TAX_RATE_BPS=1100`, `BETTER_AUTH_URL=http://localhost:3102`); the worktree's `.env` is git-ignored, mode 0600, holding a locally generated auth secret. The dev database `stockflow` and the test database `stockflow_test` were not written to.
+- **fixtures.** The script registers its own user through the shipped auth routes, creates three products at 1250 cents, a two-line draft, one invoice that is issued and one that is cancelled, plus 100 bulk products for the paging check.
+- **checks.** Fixture creation 201/200; saved totals 2×1250 + 3×1250 = 6250 subtotal, 688 tax (half-up), 6938 total; six catalogue pages reach all 103 products with page 6 past the first 100; `/invoices` shows the draft number, the customer and `$69.38`; `?status=ISSUED` and `?status=CANCELLED` list only their own invoice; `?status=PAID` renders "No paid invoices." with Clear the filter; an empty `?status=` means all statuses; an unknown status and `?page=0` render the invalid-parameter state instead of erroring; `?page=99` answers 200; the draft detail shows the snapshot names, the `$12.50` unit price, the `$25.00`/`$37.50` line totals, `$69.38` and the notes, plus Issue/Cancel/Edit links and no "Mark as paid"; the issued detail offers Mark as paid and Cancel invoice and no edit link; the cancelled detail explains the restored stock with no actions; `/invoices/new` renders the customer field, the picker, "Tax (11%)" and the server-computed default issue date; the draft edit screen seeds both quantity inputs, the snapshot price and the same `$69.38` total; `/invoices/<issued-id>/edit` is a streamed redirect (HTTP 200 with one `NEXT_REDIRECT` marker — the framework behaviour T08 recorded as O3) and contains no quantity inputs; unknown ids, malformed ids and another owner's invoice render "Page not found" without leaking the invoice; all four invoice routes answer 307 to `/login` for a signed-out visitor.
+- **shell.** The Invoices entry carries `aria-current="page"` on the invoice pages and exactly one navigation entry is marked active; no invoice page links to `/docs`.
+- **Next.js MCP on the leased port.** 9 tools discovered, `get_project_metadata` scoped to this worktree, `get_routes` listing the four invoice pages, `get_compilation_issues` empty. `get_errors` needs a connected browser session and `compile_route` rejected the bridge's string argument, so neither contributed evidence; the route fetches above compile and render every screen anyway.
+
+**Disclosed artefact (no code, contract or test was changed to make a check pass).** The first matrix run reported 3 failures out of 102, and all three were defects in my own assertions rather than in the application: React's server renderer separates adjacent interpolated text nodes with HTML comments, so `No paid invoices.` and `Tax (11%)` appear as `No <!-- -->paid<!-- --> invoices.` and `Tax (<!-- -->11%<!-- -->)`, and the 80-character window after `aria-current="page"` cut off the link's `href` even though the markup was already `<a aria-current="page" … href="/invoices">Invoices</a>`. The text assertions now run against a comment-stripped copy of the HTML — what a visitor actually reads — and re-running the unchanged code passed 105/105.
+
+**Limitations.** The interactive rows (live-total equality while typing, the pending/disabled confirmation state, dialog behaviour, offline retry, the highlight during client-side navigation) cannot be executed by automated tooling here: AMEND-T04-1 removed the browser layer, the cached Playwright Chromium cannot start (`libnspr4.so` is absent and installing it needs root), and `next-devtools` reports no browser session. They therefore stay reviewer-checklist rows, not claims of a passed browser run. The preview-versus-saved equality is supported by reusing the server's own `calculateTotals` and by the seeded edit screen showing `$69.38`, the exact total the API returned; the click-through itself is row A7.
 
 ## Handoff
 
-Completed: None. Remaining: All deliverables.
-Red/green commands/results: Not run.
-Implementation/tested SHA; integrated main SHA: None.
-Uncommitted work: None in task branch; branch not created.
-Contract notes: Record final routes/actions, stock conflict UX and provisional-total behavior.
-Blockers: Dependencies not accepted; task not authorized/assigned.
-Push/PR status: Not pushed.
-Next action: After merge T10 also requires T08.
+Status: REVIEW — worker signal only. REVIEW is not DONE; the coordinator owns acceptance, the merge into `main` and the central status record.
+
+Completed: all three deliverables at `05d503f` — the create/edit form with the paginated product picker and live totals, the list/detail/status-action screens with per-page session checks, and the invoice reviewer checklist rows. Eight new files: `app/(dashboard)/invoices/page.tsx`, `app/(dashboard)/invoices/new/page.tsx`, `app/(dashboard)/invoices/[id]/page.tsx`, `app/(dashboard)/invoices/[id]/edit/page.tsx`, `components/invoice-form.tsx`, `components/product-picker.tsx`, `components/invoice-list.tsx`, `components/invoice-actions.tsx` (1543 added lines); no existing application file was edited, and no dependency, schema, contract or test file changed. This card is the only documentation change.
+Remaining (outside T09): the reviewer's browser pass over the checklist rows, coordinator review/acceptance/merge, and T10's Swagger/README work plus the per-requirement-ID checklist ledger.
+Red/green commands and results: see Validation — every gate green at `05d503f` (install 0, unit 79/79, integration 136/136 on real PostgreSQL, lint 0, typecheck 0, build 0) plus the 105/105 live HTTP matrix, the MCP route/compilation checks, and the disclosed 3-check assertion artefact. The UI has no red phase by AMEND-T04-1, and the deliberate absence of new test files is explained in the TDD position above.
+Implementation/tested SHA: `05d503f` (all executable content). Integrated main SHA: `origin/main` `7bd5f68` — unchanged, so the explicit no-rebase integration pull answered "Already up to date" and the recorded gates are the post-integration run on this revision.
+Uncommitted work: none in the task branch; the worktree carries only ignored `.env`, `node_modules`, `generated/` and `.next/` content.
+Contract notes for T10: routes are `/invoices` (status filter `?status=`, `?page=`), `/invoices/new`, `/invoices/[id]` and `/invoices/[id]/edit`; the screens call the shipped endpoints `GET/POST /api/invoices`, `GET /api/invoices/[id]`, `PUT /api/invoices/[id]/items` (strictly `{version, items}` — customer, dates, notes and the tax rate are frozen at creation) and `PATCH /api/invoices/[id]/status`, plus `GET /api/products?search=&page=&pageSize=` at 20 rows per picker page. The create page reads `TAX_RATE_BPS` on the server and the preview uses those integer basis points; the edit screen uses the rate persisted on the draft and the server stays authoritative, so the UI labels every preview provisional. Conflict handling: `VERSION_CONFLICT` reloads the saved draft and asks the user to review; `INVOICE_NOT_EDITABLE` and 404-without-fields point at the invoice or the list; item-scoped 404/409 messages render inline on `items.N.productId`/`items.N.quantity`; transport failures keep a retry with the typed values. An empty `?status=` means "all statuses" (the filter's default option) while an unknown value renders the invalid-parameter state. There are deliberately no URL-sticky success notices (a create or edit navigates to the invoice itself), unlike observation O1 on T08. Terminal invoices render no action buttons and a paid/cancelled invoice offers no edit link. The client app still exposes no developer documentation, and the Invoices navigation entry uses the T08 `NavLink` active state.
+Blockers: none.
+Push/PR status: branch `task/T09-invoices-ui` is prepared for its push to `origin/task/T09-invoices-ui` at the evidence commit; the push follows this REVIEW commit, and the pushed SHA is reported in the assignment channel rather than in another card commit.
+Next action: coordinator review and acceptance; T10 (Swagger, README, 36-ID ledger) stays gated on the accepted merge of this task. No successor is started automatically and `main` is never touched from this branch.
 Coordinator acceptance / merge SHA: Pending.
