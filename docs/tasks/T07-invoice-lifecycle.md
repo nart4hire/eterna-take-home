@@ -60,9 +60,9 @@ Remaining: nothing for T07. T09 consumes the status endpoint and the contract no
 Red/green commands/results: red `sg docker -c 'pnpm test integration'` at `923a244` → exit 1, `24 failed | 111 passed (135)` with `invoice-lifecycle.test.ts (24 tests | 24 failed)`; green at `bf77585` → exit 0, `135 passed (135)` (twice, re-rolling the races); green at `ce9c2ab` → exit 0, `136 passed (136)` (twice, the second after the main integration). Also `pnpm test unit` 79/79, `pnpm lint` 0, `pnpm typecheck` 0, `pnpm build` 0 with the new route in the table.
 Implementation/tested SHA; integrated main SHA: `923a244` (red pin), `bf77585` (implementation), `ce9c2ab` (tested code revision, adds the post-transition immutability case); integrated main `ae380fd` = the branch base — the explicit `pull --no-rebase --no-edit origin main` reported `Already up to date`, so no merge commit exists and `ce9c2ab` is also the latest-main revision.
 Uncommitted work: none (clean tree; `.env`, `generated/`, `.next` and `node_modules` are ignored local artifacts).
-Contract notes: recorded in the section below for T09/T10.
+Contract notes: recorded in the section below for T09/T10. The self-review pass and its coordinator follow-ups are in the final section; the walkthrough is `agent_explanations/T07.md`.
 Blockers: none. T07's two decisions that needed a ruling (transition message, `postgres-test` lease) were resolved by the coordinator in this session; everything else followed the merged T06 contract.
-Push/PR status: pushed to `task/T07-invoice-lifecycle` as the commit that carries this line; verify with `git ls-remote --exit-code origin refs/heads/task/T07-invoice-lifecycle` and compare against the chat report. No pull request and no main merge attempted or authorized.
+Push/PR status: pushed to `task/T07-invoice-lifecycle` as the commit that carries this line; verify with `git ls-remote --exit-code origin refs/heads/task/T07-invoice-lifecycle` and compare against the chat report. The review pass added `0910471` (walkthrough) and a docs-only card revision on top of the tested code `ce9c2ab`. No pull request and no main merge attempted or authorized.
 Next action: coordinator review, then acceptance and the `--no-ff` main merge on explicit user approval. T09 requires T07 accepted and T04 accepted; this worker relinquishes `lib/services/invoices.ts` only after acceptance.
 Coordinator acceptance / merge SHA: Pending — not requested, not authorized.
 Proposed central updates (coordinator-owned, not edited here): add a `T07` acceptance record to `docs/execution/dependency-graph.json` on merge and mark T07 DONE in the dashboard; the dependency guide's "T07 is eligible" wording can become "T07 accepted, T09 eligible behind T04". No plan/graph/skill/memory-bank file was modified by this worker.
@@ -85,3 +85,41 @@ Proposed central updates (coordinator-owned, not edited here): add a `T07` accep
 - The status response is the full detail DTO so T09 can re-render the page without a second request; the shape is byte-compatible with `GET /api/invoices/[id]`.
 - Not exercised, and reported as such rather than as passed: a sanitized 500 on the status path (no reachable trigger without mocking; T06's equivalent came from the create path's env read) and retry-exhaustion `TRANSACTION_CONFLICT` (covered by T01/T02 unit tests only, as T06 disclosed).
 - Read-only and unchanged: `lib/services/products.ts`, `lib/services/transaction.ts`, `prisma/schema.prisma`, T06's `tests/integration/invoices.test.ts` and every T00–T06 route. `git diff --stat ae380fd ce9c2ab` touches only `lib/services/invoices.ts`, the new status route, the new lifecycle suite and this card.
+
+## Review pass and coordinator follow-ups (2026-09-18)
+
+Review class: **self-review by the implementer.** The person who wrote the code also wrote the walkthrough,
+so this is not independent verification. The walkthrough lives at `agent_explanations/T07.md` (commit
+`0910471`) and was written read-only from the pinned revision `36f982e` / tested code `ce9c2ab`. No tests
+were executed during that pass — every gate number in this card is the earlier worker run — and the
+`review-task-card` skill is read-only by default.
+
+Discrepancy check: **none found.** The card's claims matched the pinned revision on every point checked:
+the 25 named cases and their line numbers, the four-file diff footprint
+(`git diff --stat ae380fd 36f982e`), the docs-only nature of the trailing commits, and the contract notes
+(state-before-version ordering, transition-specific message, 404 for soft-deleted products at issue,
+message-only `STOCK_OVERFLOW`).
+
+Follow-ups for the coordinator. None of these were changed in code — each needs a ruling, a durable record,
+or a separately authorized task:
+
+| # | Item | Requested action |
+|---|---|---|
+| 1 | New `409 STOCK_OVERFLOW` code for a cancellation restore that would exceed the 1,000,000 bound | Ratify it; T10 documents it in the OpenAPI spec and README error table |
+| 2 | Transition conflict contract: `409 INVOICE_NOT_EDITABLE` + `Invoice status cannot change from <FROM> to <TO>` | Record it durably (graph/plan/OpenAPI). It was ruled in this session but currently exists only in this card and the tests |
+| 3 | Race losers may answer `VERSION_CONFLICT`, `INVOICE_NOT_EDITABLE` or `TRANSACTION_CONFLICT` | Accept the tolerance — the tests pin the invariants (`[200, 409]`, exact final stock/version) rather than the aborted transaction's code |
+| 4 | A soft-deleted product line is 404 at issue time rather than 409 | Confirm the T06 parity is what T09 should render |
+| 5 | `INSUFFICIENT_STOCK` names the *live* product name and quantity, not the line snapshot | Confirm parity, or request a snapshot-based message in a follow-up |
+| 6 | The `1_000_000` stock bound is now duplicated in `lib/money.ts`, `lib/validation/schemas.ts` (×2), the initial migration (×2) and `MAX_STOCK` in `lib/services/invoices.ts` | Consider a small follow-up task to centralize it in T02's schemas module; T07 was not authorized to edit that file |
+| 7 | `withSerializableRetry` retries only `P2034`, so a `40P01` deadlock would surface as a sanitized 500 | Decide between a T10 limitation note and hardening the T01 helper in a future task |
+| 8 | `assertTransition` has no direct unit test (it is fully exercised through the API matrix, all 12 pairs) | Decide whether direct unit coverage is wanted; it would be a newly authorized commit |
+| 9 | Duplicated `summaryKeys`/`itemKeys` and the `TAX_RATE_BPS` pin between the T06 and T07 suites | Informational; accepted parity unless a shared module is preferred |
+
+Adversarial probes suggested for the independent verification pass (not executed here): cancel at exactly
+`1_000_000 - qty` (should succeed, the guard is inclusive) and one unit above it (should answer
+`STOCK_OVERFLOW` and write nothing); make the *first* line fail instead of the second; send `version: "0"`
+as a string (expect 422); race an issue against a cancel of the same invoice; authenticate with
+`origin: http://localhost:3101` (expect 403).
+
+Acceptance state after this pass: still **REVIEW**. Nothing was marked DONE, no successor was dispatched,
+`origin/main` was not touched, and the central graph/plan/memory bank were not edited by this worker.
