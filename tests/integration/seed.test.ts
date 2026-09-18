@@ -79,7 +79,9 @@ describe("N3: reseeding is idempotent and never resets stock or passwords", () =
     try {
       await expect(seed()).rejects.toThrow(/production/i);
     } finally {
-      env.NODE_ENV = previous;
+      // Assigning undefined is not a restore: Node stores the string "undefined" (lib/env.ts would
+      // then read a bogus NODE_ENV), so delete when the variable was unset before this test.
+      if (previous === undefined) delete env.NODE_ENV; else env.NODE_ENV = previous;
     }
     expect(await getPrisma().user.count()).toBe(0);
     expect(await getPrisma().product.count()).toBe(0);
