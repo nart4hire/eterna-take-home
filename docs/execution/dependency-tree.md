@@ -2,7 +2,7 @@
 
 Canonical graph: `/home/areion/projects/eterna-take-home/docs/execution/dependency-graph.json`. Business specification: `/home/areion/projects/eterna-take-home/implementation_plan.md`. Graph IDs/dependencies/ownership govern scheduling; cards govern acceptance/evidence. Reconcile disagreements before coding. Rebase documented absolute workspace prefixes onto the assigned worktree; never edit another checkout.
 
-T00 is user-approved and coordinator-verified at merge `997874c5325a53c26d68658ce1bfb3a1f466282e` (approved task tip `7d880636bd1a045f3ff8eb4d01b893a8a91bb34c`). The graph acceptance record supersedes its historical REVIEW/Pending handoff. Verify merge ancestry on fetched origin/main before dispatch. T01/T02 are dependency-eligible, not yet assigned. Docker is available (this session required `sg docker -c`); DB/port leases still apply.
+T00–T03 are accepted, merged and coordinator-verified — per-task approved tips and tested merge SHAs live in the graph's `acceptance_records` (T03: task tip `bcad7789fead68f035d478815efce380b012f036`, tested merge `3e38219630b8d4ff7f1ef151eec85c87820dabd8`). The graph acceptance record supersedes historical REVIEW/Pending handoffs. Verify merge ancestry on fetched origin/main before dispatch. T04/T05 are dependency-eligible but unassigned; T06 and later remain blocked by their own dependencies. Docker is available (this session required `sg docker -c`); DB/port leases still apply.
 
 ## Dependency DAG
 
