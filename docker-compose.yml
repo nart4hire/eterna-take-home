@@ -1,5 +1,19 @@
 name: stockflow
 services:
+  app:
+    build: .
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      # Inside the Compose network the database host is the service name, not localhost.
+      DATABASE_URL: postgresql://${POSTGRES_USER:-stockflow}:${POSTGRES_PASSWORD:-local_only_change_me}@postgres:5432/${POSTGRES_DB:-stockflow}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?set BETTER_AUTH_SECRET in .env (see .env.example)}
+      BETTER_AUTH_URL: ${BETTER_AUTH_URL:-http://localhost:3000}
+      TAX_RATE_BPS: ${TAX_RATE_BPS:-1100}
+      NODE_ENV: production
+    ports:
+      - "3000:3000"
   postgres:
     image: postgres:17
     environment:

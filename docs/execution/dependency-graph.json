@@ -55,6 +55,21 @@
       "verification": "Clean-checkout simulation (generated/ moved aside, tsconfig.tsbuildinfo cleared): pnpm test unit 31/31, pnpm typecheck 0, pnpm build 0. Stricter per-gate proof: with generated/ removed immediately beforehand, pnpm typecheck and pnpm build each printed 'Generated Prisma Client (7.9.1) to ./generated/prisma' and exited 0. Regression: pnpm test integration 25/25 on real PostgreSQL, pnpm lint 0. Only raw pnpm exec vitest / tsc --noEmit invocations still need a manual pnpm db:generate."
     }
   ],
+  "scope_amendments": [
+    {
+      "id": "AMEND-T04-1",
+      "date": "2026-09-18",
+      "authorization": "Explicit user instruction in the T04 session: remove Playwright from the application, record it as an amended T04 requirement, verify the UI with a reviewer checklist instead of browser tests, and authorize T04 (plus T08/T09 where necessary) to add a simple Dockerfile and a compose app service that pins the mise versions and supports clone -> populate env where necessary -> docker compose up. Recorded as one documentation commit before the implementation commits on task/T04-ui-foundation.",
+      "decision": [
+        "Playwright is removed repository-wide: playwright.config.ts, the @playwright/test dependency and its lockfile entry, the test:e2e script, the runner's e2e subset, the .gitignore and eslint entries, and the next-e2e lease. tests/e2e/auth.spec.ts (T04), tests/e2e/products.spec.ts (T08), tests/e2e/invoices.spec.ts (T09) and tests/e2e/docs.spec.ts (T10) are withdrawn; no browser suite remains in the plan, graph or cards.",
+        "UI work is no longer test-driven. F1/F5/F6 - and later the F2/F3/F4 rows - are verified by the manual reviewer checklist published on the T04 card, extended by T08/T09 and ledger-recorded by T10. Automated coverage stays on unit tests, the real-PostgreSQL integration suites and lint/typecheck/build; rendered behavior that no test covers is reported as checklist-verified or not exercisable, never as passed.",
+        "Container work is authorized for T04 and, where necessary, T08/T09: a simple Dockerfile, a .dockerignore and an app service in docker-compose.yml. The image must use the mise.toml pins (Node 24.21.0, pnpm 12.4.2) and must make 'clone -> populate env where necessary -> docker compose up' sufficient on a fresh clone, migrations and the idempotent demo seed included.",
+        "The 'E2E deferred' wording in the T00-T03 acceptance records and in the frozen T00/T01/T03 cards stays as the historical record of the state at acceptance time; this amendment supersedes it going forward."
+      ],
+      "ownership_note": "Dockerfile, .dockerignore and docker/** (the container entrypoint) were added to T04's owns. docker-compose.yml stays listed under T00 because T00 authored it, so T04/T08/T09 act as authorized editors of the container files rather than new owners and no unordered ownership overlap is introduced.",
+      "evidence": "T04 card: requirement amendment block, reviewer verification checklist, deliverables row and validation bullets, plus the implementation commits that follow on task/T04-ui-foundation (Playwright removal gates and the fresh-clone compose rehearsal)."
+    }
+  ],
   "worktree_policy": {
     "primary_checkout": "Coordinator supplies verified absolute PRIMARY; workers never edit its project files or run app installs/tests there.",
     "directory": "<PRIMARY>/.worktrees/<task-id>-<slug>",
@@ -64,8 +79,7 @@
     "cleanup": "After REVIEW handoff, passing checks, clean state, stopped owned processes, durable evidence and verified remote HEAD, agent uses git worktree remove without force. Inspect ignored artifacts first. Keep local/remote branches. Preserve worktree on blockers/conflicts/failure; never prune or delete others' work."
   },
   "resource_locks": {
-    "postgres-test": "One coordinator-granted holder across all worktrees for migration, seed, reset, integration and E2E runs. Release after child processes stop. Default localhost:5433/stockflow_test is shared.",
-    "next-e2e": "One holder for localhost:3100; acquired together with postgres-test. Never reuse another agent's server.",
+    "postgres-test": "One coordinator-granted holder across all worktrees for migration, seed, reset, integration and container rehearsal runs. Release after child processes stop. Default localhost:5433/stockflow_test is shared. The next-e2e lease was retired together with the Playwright layer (see scope_amendments).",
     "integration": "Coordinator serializes merges into main and central dashboard updates. Workers push task branches only."
   },
   "coordinator_only": [
@@ -90,13 +104,12 @@
         "/home/areion/projects/eterna-take-home/docker-compose.yml",
         "/home/areion/projects/eterna-take-home/eslint.config.mjs",
         "/home/areion/projects/eterna-take-home/vitest.config.ts",
-        "/home/areion/projects/eterna-take-home/playwright.config.ts",
         "/home/areion/projects/eterna-take-home/scripts/test.ts",
         "/home/areion/projects/eterna-take-home/tests/setup.ts",
         "/home/areion/projects/eterna-take-home/tests/unit/test-harness.test.ts",
         "/home/areion/projects/eterna-take-home/tests/unit/environment-example.test.ts",
         "/home/areion/projects/eterna-take-home/tests/support/**"
-      ], "locks": ["postgres-test", "next-e2e"]
+      ], "locks": ["postgres-test"]
     },
     {
       "id": "T01", "title": "PostgreSQL schema and persistence",
@@ -162,9 +175,11 @@
         "/home/areion/projects/eterna-take-home/app/(dashboard)/layout.tsx",
         "/home/areion/projects/eterna-take-home/app/(dashboard)/loading.tsx",
         "/home/areion/projects/eterna-take-home/app/(dashboard)/error.tsx",
-        "/home/areion/projects/eterna-take-home/tests/e2e/auth.spec.ts",
+        "/home/areion/projects/eterna-take-home/Dockerfile",
+        "/home/areion/projects/eterna-take-home/.dockerignore",
+        "/home/areion/projects/eterna-take-home/docker/**",
         "/home/areion/projects/eterna-take-home/tests/unit/client-api.test.ts"
-      ], "locks": ["postgres-test", "next-e2e"]
+      ], "locks": ["postgres-test"]
     },
     {
       "id": "T05", "title": "Products API",
@@ -205,9 +220,8 @@
       "owns": [
         "/home/areion/projects/eterna-take-home/app/(dashboard)/products/**",
         "/home/areion/projects/eterna-take-home/components/product-form.tsx",
-        "/home/areion/projects/eterna-take-home/components/product-list.tsx",
-        "/home/areion/projects/eterna-take-home/tests/e2e/products.spec.ts"
-      ], "locks": ["postgres-test", "next-e2e"]
+        "/home/areion/projects/eterna-take-home/components/product-list.tsx"
+      ], "locks": ["postgres-test"]
     },
     {
       "id": "T09", "title": "Invoices UI",
@@ -218,9 +232,8 @@
         "/home/areion/projects/eterna-take-home/components/invoice-form.tsx",
         "/home/areion/projects/eterna-take-home/components/invoice-list.tsx",
         "/home/areion/projects/eterna-take-home/components/invoice-actions.tsx",
-        "/home/areion/projects/eterna-take-home/components/product-picker.tsx",
-        "/home/areion/projects/eterna-take-home/tests/e2e/invoices.spec.ts"
-      ], "locks": ["postgres-test", "next-e2e"]
+        "/home/areion/projects/eterna-take-home/components/product-picker.tsx"
+      ], "locks": ["postgres-test"]
     },
     {
       "id": "T10", "title": "Swagger and release verification",
@@ -233,9 +246,8 @@
         "/home/areion/projects/eterna-take-home/components/swagger-viewer.tsx",
         "/home/areion/projects/eterna-take-home/README.md",
         "/home/areion/projects/eterna-take-home/docs/requirements.md",
-        "/home/areion/projects/eterna-take-home/tests/unit/documentation.test.ts",
-        "/home/areion/projects/eterna-take-home/tests/e2e/docs.spec.ts"
-      ], "locks": ["postgres-test", "next-e2e"]
+        "/home/areion/projects/eterna-take-home/tests/unit/documentation.test.ts"
+      ], "locks": ["postgres-test"]
     }
   ]
 }

@@ -37,10 +37,8 @@ yarn-error.log*
 .env*
 !.env.example
 
-# generated application/test artifacts
+# generated application artifacts
 /generated/
-/playwright-report/
-/test-results/
 
 # vercel
 .vercel

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import {
   assertSafeTestDatabase,
@@ -90,16 +90,15 @@ describe("HARNESS T00: assertSafeTestDatabase target guard", () => {
 });
 
 describe("HARNESS T00: runner subset argument", () => {
-  it("T00-H8 accepts exactly unit | integration | e2e", () => {
+  it("T00-H8 accepts exactly unit | integration", () => {
     expect(parseRunnerSubset("unit")).toBe("unit");
     expect(parseRunnerSubset("integration")).toBe("integration");
-    expect(parseRunnerSubset("e2e")).toBe("e2e");
   });
 
-  it("T00-H9 rejects unknown or missing subsets instead of guessing", () => {
-    for (const bad of ["", "all", "UNIT", "smoke"]) {
+  it("T00-H9 rejects unknown, missing and retired subsets instead of guessing", () => {
+    for (const bad of ["", "all", "UNIT", "smoke", "e2e"]) {
       expect(() => parseRunnerSubset(bad)).toThrow(
-        /unit\|integration\|e2e|subset/i,
+        /unit\|integration|subset/i,
       );
     }
     expect(parseRunnerSubset(undefined)).toBeUndefined(); // full suite per plan
@@ -150,15 +149,22 @@ describe("HARNESS T00: configuration that prevents false coverage claims", () =>
     expect(config).toMatch(/testTimeout:\s*\d+/);
   });
 
-  it("T00-H15 playwright pins one chromium worker, port 3100, no reused server", () => {
-    const config = readFileSync(
-      path.join(WT_ROOT, "playwright.config.ts"),
-      "utf8",
-    );
-    expect(config).toMatch(/reuseExistingServer:\s*false/);
-    expect(config).toMatch(/3100/);
-    expect(config).toMatch(/workers:\s*1/);
-    expect(config).toMatch(/chromium/);
+  it("T00-H24 the retired Playwright layer is gone from config, manifest and ignores", () => {
+    expect(existsSync(path.join(WT_ROOT, "playwright.config.ts"))).toBe(false);
+    const manifest = JSON.parse(
+      readFileSync(path.join(WT_ROOT, "package.json"), "utf8"),
+    ) as {
+      scripts: Record<string, string>;
+      devDependencies: Record<string, string>;
+    };
+    expect(manifest.scripts["test:e2e"]).toBeUndefined();
+    expect(manifest.devDependencies["@playwright/test"]).toBeUndefined();
+    const runner = readFileSync(path.join(WT_ROOT, "scripts/test.ts"), "utf8");
+    expect(runner).not.toMatch(/playwright/i);
+    const ignore = readFileSync(path.join(WT_ROOT, ".gitignore"), "utf8");
+    expect(ignore).not.toMatch(/playwright-report|test-results/);
+    const eslint = readFileSync(path.join(WT_ROOT, "eslint.config.mjs"), "utf8");
+    expect(eslint).not.toMatch(/playwright/i);
   });
 
   it("T00-H16 compose test database is isolated on localhost:5433 with tmpfs and profile", () => {
@@ -172,6 +178,28 @@ describe("HARNESS T00: configuration that prevents false coverage claims", () =>
     expect(compose).toMatch(/stockflow_test/);
     expect(compose).toMatch(/5432:5432/);
     expect(compose).toMatch(/postgres:17/);
+  });
+
+  it("T00-H25 the container contract pins the mise versions and starts the migrated app", () => {
+    const dockerfile = readFileSync(path.join(WT_ROOT, "Dockerfile"), "utf8");
+    expect(dockerfile).toMatch(/FROM node:24\.21\.0/);
+    expect(dockerfile).toMatch(/pnpm@12\.4\.2/);
+    const entrypoint = readFileSync(
+      path.join(WT_ROOT, "docker", "entrypoint.sh"),
+      "utf8",
+    );
+    expect(entrypoint).toMatch(/db:migrate/);
+    expect(entrypoint).toMatch(/db:seed/);
+    expect(entrypoint).toMatch(/pnpm start/);
+    const compose = readFileSync(
+      path.join(WT_ROOT, "docker-compose.yml"),
+      "utf8",
+    );
+    expect(compose).toMatch(/app:/);
+    expect(compose).toMatch(/3000:3000/);
+    expect(compose).toMatch(/condition: service_healthy/);
+    expect(compose).toMatch(/DATABASE_URL:.*@postgres:5432/);
+    expect(compose).toMatch(/BETTER_AUTH_SECRET/);
   });
 });
 

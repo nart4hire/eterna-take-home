@@ -7,13 +7,13 @@ import { config } from "dotenv";
 import { assertSafeTestDatabase, DEFAULT_DEV_URL, DEFAULT_TEST_URL } from "../tests/support/database-target";
 import { resetTestDatabase } from "../tests/support/reset";
 export { assertSafeTestDatabase } from "../tests/support/database-target";
-export type Subset = "unit" | "integration" | "e2e";
+export type Subset = "unit" | "integration";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 export function parseRunnerSubset(value?: string): Subset | undefined {
   if (value === undefined) return undefined; // no argument means the complete release suite
-  if (value === "unit" || value === "integration" || value === "e2e") return value;
-  throw new Error("Invalid subset: expected unit|integration|e2e");
+  if (value === "unit" || value === "integration") return value;
+  throw new Error("Invalid subset: expected unit|integration");
 }
 
 export function runCommand(command: string, args: string[], cwd = root, env = process.env) {
@@ -26,12 +26,11 @@ export function runCommand(command: string, args: string[], cwd = root, env = pr
 }
 function suiteExists(subset: Subset): boolean {
   const directory = path.join(root, "tests", subset);
-  const suffix = subset === "e2e" ? ".spec.ts" : ".test.ts";
-  return existsSync(directory) && readdirSync(directory, { recursive: true, withFileTypes: true }).some(entry => entry.isFile() && entry.name.endsWith(suffix));
+  return existsSync(directory) && readdirSync(directory, { recursive: true, withFileTypes: true }).some(entry => entry.isFile() && entry.name.endsWith(".test.ts"));
 }
 
 export async function runTests(subset?: Subset): Promise<void> {
-  const suites: Subset[] = subset ? [subset] : ["unit", "integration", "e2e"];
+  const suites: Subset[] = subset ? [subset] : ["unit", "integration"];
   for (const suite of suites) {
     if (!suiteExists(suite)) throw new Error(`Unavailable ${suite} suite: implement its task before claiming coverage`);
   }
@@ -53,14 +52,13 @@ export async function runTests(subset?: Subset): Promise<void> {
     BETTER_AUTH_SECRET: randomBytes(32).toString("hex"), BETTER_AUTH_URL: "http://localhost:3100",
     NODE_ENV: "test", STOCKFLOW_TEST_DATABASE_READY: "1",
   });
-  // Caller must hold the coordinator postgres-test lease (plus next-e2e for browsers).
+  // Caller must hold the coordinator postgres-test lease.
   runCommand("docker", ["compose", "--profile", "test", "up", "-d", "--wait", "postgres-test"], root, env);
   runCommand("pnpm", ["db:generate"], root, env);
   runCommand("pnpm", ["db:migrate"], root, env);
   for (const suite of suites) {
     if (suite !== "unit") await resetTestDatabase(testUrl, devUrl);
-    if (suite === "e2e") runCommand("pnpm", ["exec", "playwright", "test"], root, env);
-    else runCommand("pnpm", ["exec", "vitest", "run", `tests/${suite}`], root, env);
+    runCommand("pnpm", ["exec", "vitest", "run", `tests/${suite}`], root, env);
   }
   // Shared Compose services are intentionally not torn down by a worker.
 }

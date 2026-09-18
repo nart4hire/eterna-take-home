@@ -4,6 +4,8 @@ Canonical graph: `/home/areion/projects/eterna-take-home/docs/execution/dependen
 
 T00–T05 are accepted, merged and coordinator-verified — per-task approved tips and tested merge SHAs live in the graph's `acceptance_records` (T03: task tip `bcad7789fead68f035d478815efce380b012f036`, tested merge `3e38219630b8d4ff7f1ef151eec85c87820dabd8`; T05: task tip `d5eeaf37d317d386e884bfbf634b7b1fc74fb96d`, tested implementation `51ff472`, tested merge `6d05f4ceb685536f77c4f92352b847466028daed`). The graph acceptance record supersedes historical REVIEW/Pending handoffs. Verify merge ancestry on fetched origin/main before dispatch. T04 is dependency-eligible and `task/T04-ui-foundation` now exists on the remote but remains unreviewed; T06 becomes eligible after the T05 merge; T07 and later remain blocked by their own dependencies. Docker is available (this session required `sg docker -c`); DB/port leases still apply.
 
+**AMEND-T04-1 (user, 2026-09-18, recorded on `task/T04-ui-foundation`):** Playwright and its browser layer were removed from the application — `playwright.config.ts`, the `@playwright/test` dependency, the `test:e2e` script, the runner's `e2e` subset, the port-3100 lease and every `tests/e2e/**` file (T04/T08/T09/T10). No browser phase exists in this guide's commands any more. **UI work is therefore not test-driven:** F1–F6 are verified by the manual reviewer checklist published on the T04 card, extended by T08 (products rows) and T09 (invoice rows) and recorded per requirement ID by T10; automated coverage stays on unit tests, the real-PostgreSQL integration suites and lint/typecheck/build. The same decision authorizes T04 — and, where necessary, T08/T09 — to add a deliberately simple `Dockerfile`, a `.dockerignore` and an `app` service in `docker-compose.yml`, pinning the `mise.toml` versions (Node 24.21.0, pnpm 12.4.2) so a fresh clone needs only a populated `.env` before `docker compose up` yields a migrated and seeded app.
+
 ## Dependency DAG
 
 ```mermaid
@@ -24,7 +26,7 @@ flowchart TD
  T09 --> T10
 ```
 
-An edge requires accepted, merged code with recorded main revision, not merely a branch push. Requirement IDs denote contributed coverage; one task need not fully satisfy each mapped ID. A6/A7/N6 are verified per API family; F5/F6 per screen family; T10 audits all 36 IDs against actual tests.
+An edge requires accepted, merged code with recorded main revision, not merely a branch push. Requirement IDs denote contributed coverage; one task need not fully satisfy each mapped ID. A6/A7/N6 are verified per API family; F1–F6 are verified by the reviewer checklist on the owning card (no browser suite exists after AMEND-T04-1); T10 audits all 36 IDs against actual tests and checklist results.
 
 ## Agent-owned worktree lifecycle
 
@@ -36,12 +38,12 @@ The skill owns detailed creation/resumption/cleanup gates. Path/branch collision
 
 - Sequential order: T00, T01, T02, T03, T04, T05, T06, T07, T08, T09, T10.
 - Source-edit parallelism: T01/T02; after T03, T04/T05; after T04+T05, T08 alongside T06 then T07; after T07, T08/T09 if still pending.
-- Parallel worktrees do not isolate databases. Coordinator grants one postgres-test lease for localhost:5433/stockflow_test; E2E also acquires next-e2e for port 3100. Record owner/worktree/acquisition in assignment channel. No lease -> wait; stale/unknown holder -> ask, never kill/reset its processes.
+- Parallel worktrees do not isolate databases. Coordinator grants one postgres-test lease for localhost:5433/stockflow_test; the former next-e2e lease for port 3100 was retired with the Playwright layer (AMEND-T04-1). Record owner/worktree/acquisition in assignment channel. No lease -> wait; stale/unknown holder -> ask, never kill/reset its processes.
 - T06 -> T07 deliberately serializes `/home/areion/projects/eterna-take-home/lib/services/invoices.ts`. Other unordered tasks have disjoint source ownership. /** denotes a subtree; [id] is a literal Next segment, not a glob.
-- T00 installs all approved dependencies including selected shadcn primitives. T04 generates UI without modifying manifests. Missing dependency/version mismatch -> BLOCKED coordinator request, not silent generator changes.
+- T00 installs all approved dependencies including the UI primitives selected in the plan. T04 writes the shadcn-style components against that installed set (no CLI generation) and, under AMEND-T04-1, removes the Playwright dependency/accompanying scripts and adds the authorized container files (`Dockerfile`, `.dockerignore`, the compose `app` service). Any other dependency or manifest change is a BLOCKED coordinator request, not a silent edit.
 - T01 owns Prisma-backed transaction helper, implemented without T02 imports: retry exhaustion rethrows a recognized Prisma error for T02 error mapper to map to 409. T02 DTOs/status unions avoid generated Prisma imports. T03 checks compatibility at the join.
 - T00 harness owns schema-independent request/reset helpers and safety tests. T03 owns auth-backed tests/helpers.ts. T01 verifies migration, T03 seed. Do not create fake exported implementations to make foundation checks pass.
-- T04 verifies auth/client behavior; full protected-page assertions await T08/T09 when those pages exist. No temporary product/invoice pages in T04.
+- T04 verifies auth/client behavior through unit tests, the merged integration suites and the container rehearsal; the rendered auth UI is checked with the reviewer checklist on its card, and concrete protected-page checks belong to T08/T09 (which extend the same checklist). No temporary product/invoice pages in T04.
 - Workers edit only their own card and graph-owned files. Graph/skill/plan/AGENTS/memory bank are coordinator-only. Shared-contract fixes require pause, coordinated prerequisite amendment and affected-task revalidation. Ownership does not expire into unrestricted editing.
 - Reviewer/coordinator serializes main merges and central status updates. Conflict-free text merges do not prove compatibility; zero conflicts cannot be guaranteed.
 
