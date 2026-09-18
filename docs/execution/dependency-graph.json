@@ -19,6 +19,13 @@
       "tested_merge_sha": "b801d3ae93e7cbca1e4f659bd17e375609fcf7de",
       "branch": "task/T01-database",
       "verification": "Coordinator merged pinned tip a19d7c8 with --no-ff (no conflicts) into b801d3a over base 237b01b; approved-SHA ancestry verified. Verified on the merged revision: pnpm test integration 25/25 against real PostgreSQL (self-generates client + migrate deploy), pnpm lint 0, pnpm build 0; pnpm test unit 28/28 and pnpm typecheck 0 after pnpm db:generate. Accepted limitation (user-approved): generated/prisma is git-ignored and only the integration path runs prisma generate, so a clean checkout must run pnpm db:generate before pnpm test unit / pnpm typecheck. Frozen branch retained unchanged at a19d7c8; E2E still deferred. Post-acceptance fix (user-approved, no separate reviewer): branch fix/harness-prisma-generate (red 3745418, impl ae26c77) makes the runner's unit fast path, test:unit, typecheck and build self-generate the Prisma client; harness T00-H21..H23 added (unit 28 -> 31). Verified by clean-checkout simulation, a per-gate generate proof, integration 25/25 and lint 0, so the accepted limitation above no longer applies to those gates."
+    },
+    "T02": {
+      "status": "DONE",
+      "approved_task_sha": "fc14c2bb8f344bdcfd6ec0bf4f84f8860067ba41",
+      "tested_merge_sha": "3f6a1d136e4a79df5d5b3f0840ef06cbfba99261",
+      "branch": "task/T02-contracts",
+      "verification": "Coordinator merged pinned tip fc14c2b with --no-ff (no conflicts) into 3f6a1d1 over base 237b01b; approved-SHA ancestry verified with git merge-base --is-ancestor, and both task refs (local and origin) confirmed still at fc14c2b after the merge. Verified on the merged revision 3f6a1d1: pnpm install --frozen-lockfile, pnpm test unit 67/67 (36 T02 + 31 harness/transaction/environment), pnpm test integration 25/25 against real PostgreSQL, pnpm lint 0, pnpm typecheck 0, pnpm build 0 - the merged harness fix generates the Prisma client inside those gates, so no manual db:generate. The reviewed tip already contained the T01 and harness-fix main integration (merge 636ef73), so acceptance needed no rework branch; the only post-review change was the docs-only evidence commit fc14c2b. User reviewed the T02 implementation walkthrough and authorized acceptance. E2E remains deferred (no Playwright suite yet). Retain task/T02-contracts unchanged at fc14c2b."
     }
   },
   "post_acceptance_fixes": [
