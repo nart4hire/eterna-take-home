@@ -1,11 +1,11 @@
 # T08 — Products UI
 
-Status: TODO
-Owner: Unassigned
+Status: REVIEW
+Owner: T08 worker (chat dispatch "I want you to implement T08" → implementation, commits and task-branch push authorized; main merge NOT authorized)
 Depends on: T04, T05
 Requirement IDs: F2, F5, F6
-Branch / worktree / base SHA: Not created
-Accepted dependency revisions: Not recorded
+Branch / worktree / base SHA: `task/T08-products-ui` / `/home/areion/projects/eterna-take-home-2/.worktrees/T08-products-ui` (PRIMARY `/home/areion/projects/eterna-take-home-2`, coordinator-confirmed as this session's checkout) / base `f8f276343a0e9cb96980301ed47e5cd407e64b37` = fetched `origin/main`
+Accepted dependency revisions: T04 approved tip `e22cefc60d366f5624e5524396f8bedf9c0ac56b` (tested code `f9f3bb93`, tested merge `e30b19499bb368a999428df143291014e5124fc8`) and T05 approved tip `d5eeaf37d317d386e884bfbf634b7b1fc74fb96d` (tested implementation `51ff472`, tested merge `6d05f4ceb685536f77c4f92352b847466028daed`); both verified as ancestors of fetched `origin/main` `f8f2763` with `git merge-base --is-ancestor` (exit 0) before the branch was created. T01/T02/T03 arrive through those reviewed tips. `origin/main` never advanced during the task (re-fetched after the implementation commit: still `f8f2763`), so the branch is a direct child of `origin/main` and no integration merge was required.
 
 > **Requirement amendment (user, 2026-09-18):** Playwright and the browser-suite layer were removed from the application (decision record on T04's card), so this card no longer owns `tests/e2e/products.spec.ts` and no browser phase exists in the test runner. UI verification is manual: the reviewer checklist published on T04's card is extended here with the products rows, while automated coverage stays on the API and regression side (T05's integration suite plus lint/typecheck/build). T08 — together with T09 — is additionally authorized to touch the container files (`Dockerfile`, `.dockerignore`, the compose `app` service) where the container work needs changes for its screens.
 
@@ -20,26 +20,70 @@ Own T08 files in `/home/areion/projects/eterna-take-home/docs/execution/dependen
 - Each products page independently requires session before loading owned data. Fresh/expired/revoked visitors redirect; foreign edit is not exposed.
 - Delayed/failed API shows pending/error/retry, disables duplicate submission, preserves entered values. Accessible labels/table/buttons, no blank error states — reviewer-checklist items, since no browser suite exists.
 
+**TDD position at this revision (recorded because it is a deliberate deviation).** No executable test was authored inside T08. The card asked for API/integration cases "where T05 does not already cover them", and T05's merged suite already covers every endpoint these screens call (25 product cases: CRUD, literal search, pagination, ownership, 401/403/404/409/422, version and soft-delete semantics), while no test path is graph-owned for T08 (`tests/unit/**`, `tests/integration/**` belong to T00/T01/T03/T05 and are not mine to extend). AMEND-T04-1 additionally removed the browser layer and declared UI work not test-driven, so the rendered behavior is checklist-verified by the reviewer. In place of new unit tests this task adds an executable **live HTTP matrix** (below) that exercises the real pages, session redirects and the full create/edit/delete flow end to end against a real PostgreSQL database, so the F2/F5 claims rest on more than a manual click-through. No test was weakened, skipped or faked, and no implementation placeholder was introduced.
+
 ## Deliverables
 
 | Deliverable | State | Evidence | Verified revision |
 |---|---|---|---|
-| Products list/search/pagination/deletion UI | NOT_STARTED | Not executed | None |
-| Create/edit forms and session checks | NOT_STARTED | Not executed | None |
-| Products reviewer verification checklist rows | NOT_STARTED | Extends T04's manual checklist (search, pagination, empty state, delete confirmation, field errors, version conflict); no browser suite exists | None |
+| Products list/search/pagination/deletion UI | VERIFIED | `app/(dashboard)/products/page.tsx` (session guard, strict `productListSchema` query parsing, out-of-range page handling, created/updated notices) + `components/product-list.tsx` (GET-form search with `next/form`, table with SKU/name/price/stock rows, `Pagination` reuse, empty states for "no products yet" and "no products match", confirmed soft delete via `AlertDialog` with pending row state and 409/404 handling) | `c0ff16f` |
+| Create/edit forms and session checks | VERIFIED | `app/(dashboard)/products/new/page.tsx`, `app/(dashboard)/products/[id]/edit/page.tsx` (own `requirePageUser()`, path id validated with `domainIdSchema` before it can reach the uuid column, unowned/unknown/deleted → `notFound()`), `components/product-form.tsx` (decimal string → integer cents through `parseMoney`, `description: null` clears, version travels with the PATCH, server `fields` rendered inline with `aria-invalid`/`aria-describedby`, duplicate submission disabled, values preserved, 409 reloads the saved product, retry when that reload fails) | `c0ff16f` |
+| Products reviewer verification checklist rows | VERIFIED | Section "Products reviewer verification checklist rows" below extends T04's checklist section C; no browser suite exists, so the rows are the reviewer's instrument, with the live HTTP matrix as supporting evidence | `c0ff16f` |
 
 ## Validation
 
-Acquire the postgres-test lease; run the API/regression suites the screens depend on plus lint/typecheck/build, and extend the container rehearsal if this task changed the container files. Record checklist results with the reviewer's browser and revision instead of browser-test output. Shared changes require pause.
+Resources and leases: the coordinator granted the `postgres-test` lease (`127.0.0.1:5433/stockflow_test`) and a dev-server port for this task. Port 3100 turned out to be held by a process that was not mine (PID 13818, `next dev` from `/home/areion/projects/eterna-take-home/.worktrees/T04-review`, running since 12:54); I did not touch it, asked the coordinator, and only after the coordinator confirmed that lock was an erroneous leftover of a forgotten T04-review server did I stop exactly that orphaned chain and take the granted port. The live matrix ran against a dedicated database (`stockflow_t08`) created on the shared 5433 instance, migrated and seeded for this task, then dropped; the shared `stockflow-postgres-test-1` service was left running and the shared dev database on 5432 was never touched. Docker required `sg docker -c` in this session throughout.
+
+Commands and results (all in the worktree, tested revision `c0ff16f`):
+- `pnpm install --frozen-lockfile` → exit 0. No manifest, lockfile, schema, migration, config or shared-contract file changed: the diff is the five T08-owned files plus this card.
+- `sg docker -c 'pnpm test integration'` → exit 0, `Test Files 4 passed (4)`, `Tests 81 passed (81)` (25 T01 + 27 auth + 4 seed + 25 products) on real PostgreSQL.
+- `pnpm test unit` → exit 0, 8 files, 78/78 (no T00/T02 regression).
+- `pnpm lint` → exit 0; `pnpm typecheck` → exit 0 (self-generates the Prisma client); `env -u NODE_ENV pnpm build` → exit 0 with the route table now containing `ƒ /products`, `ƒ /products/new` and `ƒ /products/[id]/edit` alongside the existing routes.
+- Live HTTP matrix (`bash /tmp/t08-matrix.sh`, disposable script, `next dev --port 3100` with `DATABASE_URL=…@localhost:5433/stockflow_t08` and `BETTER_AUTH_URL=http://localhost:3100`): exit 0, **67 checks PASS / 0 FAIL** against the real pages with a cookie jar. Covered: signed-out `307 → /login` for `/`, `/products`, `/products/new` and `/products/<uuid>/edit`; `401` for `/api/products` with and without a body; demo-credential login `200` with one session cookie; the list rendering `DEMO-001`, "A4 copy paper", `$7.49`, `Showing 1–5 of 5` and the pagination landmark; SKU search narrowing to `Showing 1–1 of 1` while excluding other rows; name search; literal `%` search returning "No products match"; the empty state and its clear-search link; `?page=abc` and `?page=0` showing the invalid-parameter notice instead of a blank or 500 page; `?page=2` past the last page; `/products/new` with labelled fields and its submit/back controls; a foreign `Origin` rejected `403`; create `201` with the SKU normalized to upper case; the created row listed; the edit page prefilled `value="12.34"` with the `Loaded version 0` hint; a stale `PATCH` answering `409 VERSION_CONFLICT`; a current-version `PATCH` `200`; the edit page then showing the new name, `value="49.99"` and `Loaded version 1`; `DELETE` `204` followed by the row disappearing and a second `DELETE` answering `404`; an unknown UUID and a malformed id both rendering the 404 UI with `noindex`; and logout `204` followed by `/products` answering `307 → /login` with the same cookie.
+- Dev-loop MCP against that server (`next-devtools`): 9 tools discovered; `get_project_metadata` → `…/.worktrees/T08-products-ui`; `get_routes` → includes `/products`, `/products/new`, `/products/[id]/edit`; `get_errors` → `{"configErrors":[],"sessionErrors":[]}`; `get_compilation_issues` → `{"issues":[]}`; the dev log contained 0 hydration/warning/error lines across 93 requests. (`compile_route` was not usable: the MCP endpoint rejected the string-wrapped `args`; `get_compilation_issues` already builds the module graph for every route.)
+- Container files: untouched by this task, so T04's fresh-clone rehearsal remains the container evidence and was not repeated.
+
+Two framework behaviors the reviewer should expect (documented by Next, not defects — the matrix asserts them explicitly):
+1. `notFound()` on a **streamed** response renders the 404 UI but returns HTTP 200. The not-found docs state: "Next.js will return a `200` HTTP status code for streamed responses, and `404` for non-streamed responses"; the rendered page carries `<meta name="robots" content="noindex" />`. The `/products/[id]/edit` checks therefore assert the 404 **UI**, not the status code.
+2. `redirect()` in a **streaming** context emits the redirect client-side ("this will insert a meta tag to emit the redirect on the client side"). The stale-page clamp is observed as `NEXT_REDIRECT;replace;/products;307` in the payload plus `<meta http-equiv="refresh" content="1;url=/products"/>`, so a browser (and a JavaScript-less visitor, after the meta refresh) still lands on `/products`.
+
+Limitations, recorded rather than claimed as passes: there is no browser automation by decision, so focus/pending/disabled-state and visual rows stay for the reviewer; the matrix ran in `next dev`, so it evidences server-rendered HTML and HTTP contracts, not pixels; the streaming status behavior above means the edit page's 404 arrives with a 200 status in dev; and T08 adds no automated test file of its own (see the TDD position above).
+
+## Products reviewer verification checklist rows (extends T04's section C; F2, F5, F6)
+
+Automated coverage behind these screens: T05's products integration suite (25 real-PostgreSQL cases), the unit suite, lint/typecheck/build and the live HTTP matrix recorded above. Everything below still needs a human in a browser against a signed-in session; T10 carries the results into the release ledger per requirement ID.
+
+- [ ] Signing in lands on `/products`, and the seeded catalogue lists SKU, name, unit price (`$7.49` style) and stock (F2).
+- [ ] A fresh/private window opens `/products`, `/products/new` and `/products/<id>/edit`; each redirects to `/login` without flashing private content, and the same happens after signing out elsewhere (revoked session) (F5).
+- [ ] Searching a SKU or a name filters the table, the address shows `?search=…`, the box keeps the term, "Clear" restores the full list, and a term with no matches shows “No products match …” with a working clear link — never a blank area (F2, F6).
+- [ ] Searching `%` or `_` returns only literal matches or the empty state, showing that search is not a wildcard (F2).
+- [ ] With more than 20 products (or after deleting rows) the pagination controls read "Showing x–y of n", Previous/Next update `?page=`, and a stale `?page=` past the last page lands back on the list instead of an empty screen (F2).
+- [ ] Deleting asks for confirmation in a dialog naming the SKU; the row shows "Deleting…" while the request runs, other row actions are disabled, and the list refreshes with a "… was deleted." notice. The row is gone and its SKU is still reserved (recreating it reports "This SKU is already in use") (F2, F6).
+- [ ] Cancelling the delete dialog leaves the row untouched (F6).
+- [ ] Creating a product with a SKU that already exists shows the server message next to the SKU field, keeps the typed values, and disables the submit button while saving (F2, F6).
+- [ ] Entering `12.345` or text in Unit price shows the inline money error without a request, and a saved price matches the decimal that was typed (F2).
+- [ ] Editing a product prefills its exact saved values, and saving navigates back with a "Product saved." notice reflecting the new values (F2).
+- [ ] With the same product open in two tabs, saving the older form reports that the product changed and loads the latest saved values into the form instead of overwriting them (F2, F6).
+- [ ] An unreachable API shows a message with a retry rather than a blank area, and the dashboard boundary offers "Try again" (F6).
+- [ ] Labels, table headers and the edit/delete buttons are reachable and announce their action (for example "Delete DEMO-001"), and the empty state offers "Add a product" (F2, F6).
+
+## Contract notes for successors
+
+- Routes: `GET /products` (`?search=`, `?page=`), `GET /products/new`, `GET /products/[id]/edit`, all inside the `(dashboard)` layout and each re-checking the session with `requirePageUser()`.
+- Page query handling: only `search` and `page` reach `productListSchema`; unrelated keys — including `?created=1`/`?updated=1`, which drive the success notices — are ignored so a bookmarked URL never turns into an error. An invalid `page`/`search` renders the "Those search parameters are not valid" alert with a reset link instead of querying. Server pages call `listProducts`/`getProduct` directly and never self-fetch over HTTP.
+- The edit page validates the path id with `domainIdSchema` (upper case normalized) and calls `notFound()` when the id is malformed or the product is unknown, unowned or soft-deleted, so ownership is never revealed. In a streamed response that 404 UI arrives with HTTP 200 (the Next rule above); T10 should record the status rather than treat it as a failure.
+- Client mutations: `POST /api/products` plus `PATCH`/`DELETE /api/products/[id]` through `apiFetch`; the delete body is `{ version }`, the patch body always carries `version` together with every mutable field, and `description: null` clears the text. A 401 keeps navigating to `/login` through `apiFetch`.
+- Money: the form converts the decimal string with the shared `parseMoney` helper and never does float arithmetic; `formatMoney` renders prices; cents→input uses `Math.trunc`/modulo so the prefilled value round-trips exactly.
+- Failure UX: server `fields` render inline with `aria-invalid`/`aria-describedby`, the alert carries the message, pending disables resubmission, typed values survive, `409 VERSION_CONFLICT` reloads the saved product (with a retry button if that reload fails), and `404` on delete explains that the product no longer exists after refreshing.
+- No shared file was amended: `Pagination`, `apiFetch`, the T04 UI kit and T05's service/API were used exactly as published. The T08 diff is the five owned files plus this card.
 
 ## Handoff
 
-Completed: None. Remaining: All deliverables.
-Red/green commands/results: Not run.
-Implementation/tested SHA; integrated main SHA: None.
-Uncommitted work: None in task branch; branch not created.
-Contract notes: Record final routes, accessibility/error behavior and any requested shared changes.
-Blockers: Dependencies not accepted; task not authorized/assigned.
-Push/PR status: Not pushed.
-Next action: After merge T10 also requires T09.
+Completed: all three deliverables — the products list/search/pagination/delete screen, the create and edit forms with independent per-page session checks, and the products reviewer checklist rows.
+Remaining (outside T08): reviewer/coordinator acceptance and merge; T10 records checklist results per requirement ID; T09 owns the invoice screens.
+Red/green commands and results: see Validation — every gate green at `c0ff16f` (integration 81/81, unit 78/78, lint/typecheck/build 0, live matrix 67/67, dev-loop MCP clean). The UI has no red phase by AMEND-T04-1, and the deliberate absence of new test files is explained in the TDD position.
+Implementation/tested SHA: `c0ff16f` — the only executable change; this card commit is documentation-only and cites it. Integrated main SHA: `f8f276343a0e9cb96980301ed47e5cd407e64b37` (= `origin/main` at branch creation, still current, so no integration merge was required).
+Uncommitted work: none; the worktree is clean apart from ignored `.env`, `node_modules`, `generated/` and `.next/`.
+Push/PR status: the code commit and this card are pushed to `origin/task/T08-products-ui` with the remote SHA verified against local `HEAD`; `main` untouched.
+Next action: coordinator review of the diff, card and evidence, then a `--no-ff` merge of the branch tip and the merged-revision verification; T09/T10 become eligible only after that.
 Coordinator acceptance / merge SHA: Pending.
