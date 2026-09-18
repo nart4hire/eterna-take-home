@@ -22,15 +22,16 @@ This project uses [`next/font`](https://nextjs.org/docs/app/building-your-applic
 
 ## Local prerequisites (StockFlow)
 
-`generated/prisma` is a generated build artifact and is not committed. Generate the Prisma client before running type checks or unit tests, since those import it:
+`generated/prisma` is a generated build artifact and is not committed. Every local gate generates it on demand, so no manual step is needed:
 
 ```bash
 pnpm install --frozen-lockfile
-pnpm db:generate   # required before `pnpm typecheck` and `pnpm test unit`
-pnpm test unit
+pnpm test unit    # runner runs `prisma generate` first; no database needed
+pnpm typecheck    # runs `prisma generate` first
+pnpm build        # runs `prisma generate` first
 ```
 
-Prisma client generation is offline and needs no database. Integration tests generate the client themselves (`pnpm test integration` runs `prisma generate` + `prisma migrate deploy`) and additionally require the isolated test database from the Compose `test` profile (localhost:5433/stockflow_test). Docker access may need `sg docker -c` on this machine.
+Prisma client generation is offline and needs no database. `pnpm test integration` also generates the client itself and additionally requires the isolated test database from the Compose `test` profile (localhost:5433/stockflow_test). Only raw `pnpm exec vitest` / `tsc --noEmit` invocations bypass these scripts and still need a manual `pnpm db:generate` first. Docker access may need `sg docker -c` on this machine.
 
 ## Learn More
 
